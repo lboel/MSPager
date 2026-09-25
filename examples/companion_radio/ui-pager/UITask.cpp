@@ -326,7 +326,8 @@ void UITask::renderText(int x, int y, int max_w, const char* str) {
   }
 }
 
-void UITask::renderBattery() {
+// draws the battery icon top right, returns its left x
+int UITask::renderBattery() {
   uint16_t mv = getBattMilliVolts();
   int pct = ((int)mv - BATT_MIN_MILLIVOLTS) * 100 / (BATT_MAX_MILLIVOLTS - BATT_MIN_MILLIVOLTS);
   if (pct < 0) pct = 0;
@@ -338,10 +339,24 @@ void UITask::renderBattery() {
   _display->drawRect(x, 0, w, h);
   _display->fillRect(x + w, 2, 2, h - 4);
   _display->fillRect(x + 2, 2, (w - 4) * pct / 100, h - 4);
+  return x;
+}
 
-  char tmp[8];
-  snprintf(tmp, sizeof(tmp), "%d%%", pct);
-  _display->drawTextRightAlign(x - 3, 1, tmp);
+// header: "<name>        <pin> [bat]" - name left, BLE PIN right-aligned next to the battery
+void UITask::renderHeader() {
+  int batt_x = renderBattery();
+  int right = batt_x - 3;        // leaves exactly 10 chars for the name next to a 6-digit PIN
+
+  if (the_mesh.getBLEPin() != 0) {
+    char pin[12];
+    snprintf(pin, sizeof(pin), "%lu", (unsigned long)the_mesh.getBLEPin());
+    right -= textWidth(pin);
+    _display->setCursor(right, 1);
+    _display->print(pin);
+    right -= CHAR_W;             // gap between name and PIN
+  }
+  renderText(0, 1, right, _node_prefs->node_name);
+  _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 }
 
 void UITask::renderBoot() {
@@ -359,15 +374,7 @@ void UITask::renderBoot() {
 }
 
 void UITask::renderChat() {
-  renderBattery();
-  if (!_ble_seen && the_mesh.getBLEPin() != 0) {   // BLE PIN top left until the first app connection
-    char tmp[16];
-    snprintf(tmp, sizeof(tmp), "PIN %lu", (unsigned long)the_mesh.getBLEPin());
-    _display->setColor(UIColor::title_txt);
-    _display->setCursor(0, 1);
-    _display->print(tmp);
-  }
-  _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
+  renderHeader();
 
   if (_inbox_count == 0) {
     if (the_mesh.findPagerChannel() < 0) {
@@ -485,11 +492,6 @@ void UITask::loop() {
       else handleDouble();
       if (_display != NULL && _display->isOn()) wake();   // restart timeout, refresh
     }
-  }
-
-  if (!_ble_seen && hasConnection()) {
-    _ble_seen = true;
-    _next_refresh = 0;
   }
 
   if (_screen == Screen::BOOT && millis() >= _boot_until) {

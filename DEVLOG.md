@@ -4,6 +4,16 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Change: header always shows name + PIN + battery
+
+**Request:** for simplicity, always show the pager's name and BLE PIN, on the same line as the battery.
+
+**Done:** `UITask::renderHeader()`: nickname left, PIN right-aligned 3 px before the battery icon. This replaces the "PIN until first connection" behaviour from the previous entry (`_ble_seen` removed).
+
+**Trade-off:** there's no room for the battery **percentage** text. A 10-character name + space + 6-digit PIN + icon fill the 128 px line, so the icon fill alone shows the charge. Names over 10 characters are ellipsized.
+
+---
+
 ## 2026-09-25 — Feature: BLE PIN in chat header
 
 **Request:** show the Bluetooth connection code top left until a connection happens after boot, and again after every reset.

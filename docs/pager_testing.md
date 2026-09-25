@@ -14,8 +14,8 @@ Flashing: see [pager_flashing.md](pager_flashing.md). For M1, use `out/heltec_v4
 
 ### Boot
 - [ ] 1. After flashing and pressing RST: the OLED shows **MSPager**, the version (`v0.1.0-m1-…`), the node name and **BLE PIN: nnnnnn**.
-- [ ] 2. After ~5 s it switches to the chat screen: battery icon + percentage top right, a separator line, and "No messages yet / Hold: send".
-- [ ] 3. The battery percentage looks plausible (with and without a LiPo attached).
+- [ ] 2. After ~5 s it switches to the chat screen: a header with the node name, BLE PIN and battery icon, a separator line, and "No messages yet / Hold: send".
+- [ ] 3. The battery icon fill looks plausible (with and without a LiPo attached).
 
 ### Display power (FRD-003)
 - [ ] 4. Without touching anything, the display turns off ~15 s after the chat screen appears (~20 s after boot).
@@ -83,10 +83,10 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 15b. With the app connected to A: send `Angekommen?` from **A's button UI**. The app shows it in `Pager` as `Anna: Angekommen?` (listed as coming from `Anna`, not as your own bubble).
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
-### BLE PIN in header (FRD-004)
-- [ ] 16b. After boot, the chat header shows `PIN nnnnnn` top left (same PIN as the boot screen).
-- [ ] 16c. Connect the MeshCore app: the PIN disappears from the header right away and stays gone after disconnecting.
-- [ ] 16d. Press RST: after boot the PIN is back in the header.
+### Header: name + PIN + battery (FRD-004)
+- [ ] 16b. The chat header shows the nickname (left), the BLE PIN (right-aligned, same as the boot screen) and the battery icon, all on one line with no overlap.
+- [ ] 16c. It stays like that while and after the app is connected.
+- [ ] 16d. Set a 10-character name (e.g. `Alexandria`): it's shown in full. With 12 characters it gets cut off with `...`.
 
 ### Robustness
 - [ ] 17. In the app, rename A's `Pager` channel to something else. A's chat (with no messages) shows `No 'Pager' channel`, and hold → popup `No 'Pager' channel`, nothing sent.
