@@ -47,6 +47,12 @@ static const uint8_t gps_nofix_icon[8] = { 0x3D, 0x42, 0x85, 0x89, 0x52, 0x24, 0
 #define MARQUEE_PX_PER_SEC    20
 #define MARQUEE_FRAME_MILLIS  50   // fix counts as current if the last valid reading is this recent
 
+// CP437 arrows for button hints, printed as-is (other control chars become spaces)
+#define ARROW_UP     "\x18"
+#define ARROW_DOWN   "\x19"
+#define ARROW_LEFT   "\x1B"
+#define IS_ARROW(c)  ((c) >= 0x18 && (c) <= 0x1B)
+
 // Per-cell advance. Size 2 uses 11px instead of GFX's 12px (10px glyph + 1px gap),
 // so 11 chars fit the 128px width and "Angekommen?" stays on one line.
 static int cellW(int sz)  { return sz == 2 ? 11 : CHAR_W; }
@@ -487,7 +493,7 @@ void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
     if (c >= 0x80) {
       c = 0xDB;  // CP437 full block
       while ((*p & 0xC0) == 0x80) p++;
-    } else if (c < 32) {
+    } else if (c < 32 && !IS_ARROW(c)) {
       c = ' ';
     }
     ch[0] = (char)c;
@@ -522,7 +528,7 @@ void UITask::renderTextRaw(int x, int y, const char* str, int sz) {
     if (c >= 0x80) {
       c = 0xDB;
       while ((*p & 0xC0) == 0x80) p++;
-    } else if (c < 32) {
+    } else if (c < 32 && !IS_ARROW(c)) {
       c = ' ';
     }
     if (cx + cellW(sz) > 0) {
@@ -613,16 +619,16 @@ void UITask::renderChat() {
       return;
     }
     _display->drawTextCentered(_display->width() / 2, 28, "No messages yet");
-    renderHint("Hold:send  2x:off");
+    renderHint("Hold:send 2x:off");
     return;
   }
 
   if (_sel >= 0) {
     renderChatSelected();
-    renderHint("Hold:open  2x:back");
+    renderHint("Tap:" ARROW_UP " Hold:open 2x:" ARROW_LEFT);
     return;
   }
-  renderHint("Tap:select  Hold:send");
+  renderHint("Tap:" ARROW_UP " Hold:send");
 
   // latest CHAT_LINES messages, newest at the bottom
   int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
@@ -725,7 +731,7 @@ void UITask::renderDetail() {
   renderText(0, 45, _display->width() - age_w - CHAR_W, coords);
   renderText(_display->width() - age_w, 45, age_w, age);
 
-  renderHint("Hold:reply  2x:back");
+  renderHint("Hold:reply 2x:" ARROW_LEFT);
 }
 
 void UITask::renderPicker(bool reply) {
@@ -761,7 +767,7 @@ void UITask::renderPicker(bool reply) {
     renderText(4, y, _display->width() - 8, opts[i]);
   }
 
-  renderHint("Hold:send  2x:cancel");
+  renderHint("Tap:" ARROW_DOWN " Hold:send 2x:" ARROW_LEFT);
 }
 
 // ---------------------------------------------------------------- loop

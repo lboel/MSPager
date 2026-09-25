@@ -4,6 +4,19 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Arrow symbols in button hints
+
+**Request:** replace "select" with ↑/↓ depending on the screen and "back" with ←, and show the Tap option on a selected message too.
+
+**Done:** hints now use the CP437 arrows from the display font (`ARROW_UP/DOWN/LEFT`). `renderText()`/`renderTextRaw()` let 0x18–0x1B through instead of turning control characters into spaces.
+- overview: `Tap:↑ Hold:send`, and with a selection `Tap:↑ Hold:open 2x:←`
+- detail: `Hold:reply 2x:←`
+- pickers: `Tap:↓ Hold:send 2x:←` (now also showing Tap, and ← for cancel)
+
+All hints switched to single spaces so the longest (20 characters) fits the 21-column row.
+
+---
+
 ## 2026-09-25 — Marquee scrolling for long text, single-line selection
 
 **Request:** long text was only ellipsized. Add slow horizontal scrolling for the selected message (overview) and the detail message. Limit the selected message to one line so neighbours stay visible.

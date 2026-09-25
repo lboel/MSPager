@@ -27,12 +27,14 @@
 
    | State | Hint |
    |---|---|
-   | no messages | `Hold:send  2x:off` |
+   | no messages | `Hold:send 2x:off` |
    | no pager channel | `2x:off` |
-   | messages, nothing selected | `Tap:select  Hold:send` |
-   | message selected | `Hold:open  2x:back` |
+   | messages, nothing selected | `Tap:↑ Hold:send` |
+   | message selected | `Tap:↑ Hold:open 2x:←` |
 
-   Other screens: detail `Hold:reply  2x:back`, pickers `Hold:send  2x:cancel`, pairing `Tap:cancel`.
+   Other screens: detail `Hold:reply 2x:←`, pickers `Tap:↓ Hold:send 2x:←`, pairing `Tap:cancel`.
+
+   Arrows show the direction a gesture moves: **↑** = select the next older message (the list grows upward), **↓** = next option in a picker, **←** = back/cancel. They're CP437 characters 0x18/0x19/0x1B from the display font. Hints use single spaces so the longest one (`Tap:↑ Hold:open 2x:←`, 20 characters) fits 21 columns.
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
@@ -44,7 +46,7 @@ rows 2–6 (5 message lines, oldest at top, newest at bottom), then the hint row
       |Ben: Brauche Hilfe      |
       |•Cleo: @Ben [☎]         |
 |────────────────────────|
-|Tap:select  Hold:send   |
+|Tap:↑ Hold:send         |
 ```
 
 ### Selected layout
