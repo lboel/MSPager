@@ -14,8 +14,8 @@ Flashing: see [pager_flashing.md](pager_flashing.md). For M1, use `out/heltec_v4
 
 ### Boot
 - [ ] 1. After flashing and pressing RST: the OLED shows **MSPager**, the version (`v0.1.0-m1-…`), the node name and **BLE PIN: nnnnnn**.
-- [ ] 2. After ~5 s it switches to the chat screen: a header with the node name, BLE PIN and battery icon, a separator line, and "No messages yet / Hold: send".
-- [ ] 3. The battery icon fill looks plausible (with and without a LiPo attached).
+- [ ] 2. After ~5 s it switches to the chat screen: a header with the node name, BLE PIN and battery percentage, a separator line, and "No messages yet / Hold: send".
+- [ ] 3. The battery percentage looks plausible (with and without a LiPo attached).
 
 ### Display power (FRD-003)
 - [ ] 4. Without touching anything, the display turns off ~15 s after the chat screen appears (~20 s after boot).
@@ -84,7 +84,7 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
 ### Header: name + PIN + battery (FRD-004)
-- [ ] 16b. The chat header shows the nickname (left), the BLE PIN (right-aligned, same as the boot screen) and the battery icon, all on one line with no overlap.
+- [ ] 16b. The chat header shows the nickname (left), the BLE PIN (right-aligned, same as the boot screen) and the battery percentage (e.g. `87%`), all on one line with no overlap. The PIN doesn't shift between `100%` and `9%`.
 - [ ] 16c. It stays like that while and after the app is connected.
 - [ ] 16d. Set a 10-character name (e.g. `Alexandria`): it's shown in full. With 12 characters it gets cut off with `...`.
 

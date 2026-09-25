@@ -326,26 +326,28 @@ void UITask::renderText(int x, int y, int max_w, const char* str) {
   }
 }
 
-// draws the battery icon top right, returns its left x
+// draws the battery percentage top right, returns its left x
 int UITask::renderBattery() {
   uint16_t mv = getBattMilliVolts();
   int pct = ((int)mv - BATT_MIN_MILLIVOLTS) * 100 / (BATT_MAX_MILLIVOLTS - BATT_MIN_MILLIVOLTS);
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
 
-  const int w = 20, h = 9;
-  int x = _display->width() - w - 3;
+  char tmp[8];
+  snprintf(tmp, sizeof(tmp), "%d%%", pct);
+  int x = _display->width() - textWidth(tmp);
   _display->setColor(UIColor::title_txt);
-  _display->drawRect(x, 0, w, h);
-  _display->fillRect(x + w, 2, 2, h - 4);
-  _display->fillRect(x + 2, 2, (w - 4) * pct / 100, h - 4);
-  return x;
+  _display->setCursor(x, 1);
+  _display->print(tmp);
+  return _display->width() - textWidth("100%");   // fixed column, so the PIN doesn't shift
 }
 
-// header: "<name>        <pin> [bat]" - name left, BLE PIN right-aligned next to the battery
+// header: "<name>      <pin> <pct>" - name left, BLE PIN right-aligned next to the battery percentage.
+// 4px gaps leave exactly 10 chars for the name next to a 6-digit PIN and "100%".
+#define HEADER_GAP  4
+
 void UITask::renderHeader() {
-  int batt_x = renderBattery();
-  int right = batt_x - 3;        // leaves exactly 10 chars for the name next to a 6-digit PIN
+  int right = renderBattery() - HEADER_GAP;
 
   if (the_mesh.getBLEPin() != 0) {
     char pin[12];
@@ -353,7 +355,7 @@ void UITask::renderHeader() {
     right -= textWidth(pin);
     _display->setCursor(right, 1);
     _display->print(pin);
-    right -= CHAR_W;             // gap between name and PIN
+    right -= HEADER_GAP;
   }
   renderText(0, 1, right, _node_prefs->node_name);
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);

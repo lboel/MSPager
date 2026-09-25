@@ -4,6 +4,14 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Change: battery as percentage, no icon
+
+**Request:** show the percentage, not the battery symbol.
+
+**Done:** `renderBattery()` prints `NN%` right-aligned in a fixed 4-column slot (so the PIN doesn't move as the value changes). With 4 px gaps, the name still gets 10 characters.
+
+---
+
 ## 2026-09-25 — Change: header always shows name + PIN + battery
 
 **Request:** for simplicity, always show the pager's name and BLE PIN, on the same line as the battery.
