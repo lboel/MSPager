@@ -175,3 +175,29 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 17. In the app, rename A's `Pager` channel to something else. A's chat (with no messages) shows `No 'Pager' channel`, and hold → popup `No 'Pager' channel`, nothing sent.
 - [ ] 18. Reboot A: a new `Pager` channel with a **new** key is created (share the group key again per §5.4).
 - [ ] 19. Send 20 messages. Only the last 16 are browsable (FRD-016).
+
+---
+
+## M3 — Location (two or three pagers, outdoors)
+
+Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, different nicknames, GPS modules attached. For the first fix, go outdoors with a clear view of the sky for 2–5 min.
+
+### GPS & suffix (FRD-010, FRD-011, FRD-012)
+- [ ] 1. Before any fix (indoors, fresh boot): send `Angekommen?` from A. The app connected to B shows `A: Angekommen? [no GPS]`, and B's detail shows `no GPS` / `no GPS fix`.
+- [ ] 2. Outdoors, after a fix: send again. The app shows `[lat,lon]` with **exactly 4 decimals**, and B's detail shows the same coordinates.
+- [ ] 3. Take A indoors until the fix is lost (> 2 min), then send. The suffix carries `~Nmin`, and B's relative position starts with `~`.
+- [ ] 4. The chat list never shows the `[...]` suffix, only in the app and as coordinates in detail.
+
+### Detail view (FRD-005)
+- [ ] 5. Pagers ~50–200 m apart, both with a fix. B opens A's message: the title shows `A  NNNm <dir>` with plausible distance (±20 m) and direction (±1 sector, check with a phone map). The row below shows the coordinates + message age.
+- [ ] 6. Opening your own message shows `you` in the title.
+- [ ] 7. B without a fix: the title shows `no own GPS`, and the coordinates are still shown.
+
+### Location messages (FRD-019)
+- [ ] 8. Compose picker: 4 options, and the title shows `1/4`. Reply picker: 6 options, scrolls after the 4th, title `n/6`.
+- [ ] 9. A: `Mein Standort` → hold. B's chat shows `A: Mein Standort 340m SW` (distance/direction appended). When selected, the large block shows it too.
+- [ ] 10. A: `Standort?` to the group. Within ~4 s, B **and** C answer automatically. A shows `B: @A Mein Standort …` and `C: @A Mein Standort …`.
+- [ ] 11. On B (and C), the answer is in the own chat as `me: @A Mein Standort`, and the popup `Location shared` appears if the display is on.
+- [ ] 12. A: select one of B's messages → reply `Standort?`. **Only B** answers, and C stays silent.
+- [ ] 13. `Mein Standort` never triggers an answer (no loop). Watch for 30 s after step 10.
+- [ ] 14. Free text from the app without a suffix shows `no position` in detail and doesn't break anything.

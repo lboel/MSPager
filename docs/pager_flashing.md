@@ -143,6 +143,8 @@ Disconnect the app (Bluetooth stays on, and the app can reconnect any time). Pre
 | Send "Angekommen?" / "Brauche Hilfe" | **Hold** PRG → **short press** to choose → **hold** to send |
 | Read a message's details (distance, direction, coordinates) | **Short press** to select it → **hold** |
 | Reply "Ja" / "Nein" / "OK" / 📞 | In the message details: **hold** → **short press** to choose → **hold** to send |
+| Ask where the others are | **Hold** → choose `Standort?` → **hold**. The other pagers answer automatically with `Mein Standort` and their distance/direction |
+| Share your position | **Hold** → choose `Mein Standort` → **hold** |
 | Go back / cancel | **Double press** |
 | Turn the display off | **Double press** on the main screen, or wait 15 s |
 | Pair with the app (pager not found in the app) | From the main screen, **hold PRG for 10 s**. The large PIN appears for 30 s, so connect the app now |

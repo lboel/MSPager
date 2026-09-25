@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M3) |
 | Milestone | M3 |
 | PRD | §8 (Position precision, No GPS fix), US-4 |
 
@@ -27,4 +27,5 @@
 - After losing a fix, messages carry the last fix with the correct age.
 
 ## Implementation notes
+- Code: `ui-pager/PagerLocation.h` (`formatPosSuffix`, `parsePosSuffix`, `distanceBearing`), with host-tested edge cases (rounding, negative values, malformed suffixes).
 - `LocationProvider::getLatitude()/getLongitude()` return 1e-6 degrees (`long`). Round with `(v + sign*50) / 100` to get 1e-4 units, then print as `%s%ld.%04ld`.

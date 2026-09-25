@@ -66,6 +66,7 @@ So the whole UI runs on **one button** with three gestures: **short press**, **l
 | US-5 | pager user | reply "Ja" / "Nein" / "OK" / 📞 to a specific message | the asker gets a quick answer and knows it was meant for them |
 | US-6 | pager user | notice a new message (display wakes, LED blinks) | I don't miss a call for help |
 | US-7 | device admin | flash one firmware and set nickname/channel via the MeshCore app | setting up a new pager takes minutes |
+| US-9 | pager user | ask "where are you?" and get the others' positions automatically | I can find the group without anyone pressing a button |
 | US-8 | device admin | have stock MeshCore app users in the same channel read pager messages | a phone user can join the group |
 
 ## 7. Canned message catalogue
@@ -78,6 +79,8 @@ So the whole UI runs on **one button** with three gestures: **short press**, **l
 | Reply | `Nein` | Nein |
 | Reply | `OK` | OK |
 | Reply | `📞` (UTF-8 U+1F4DE) | custom 8×8 handset glyph ([FRD-013](frd/FRD-013-phone-emoji-rendering.md)) |
+| Start + reply | `Standort?` | location request: other pagers **answer automatically** with `Mein Standort` ([FRD-019](frd/FRD-019-location-messages.md)) |
+| Start + reply | `Mein Standort` | share location: receivers see distance + direction, e.g. `Mein Standort 1.2km NE` |
 
 Replies carry a mention of the original sender, e.g. `@[Anna] Ja` ([FRD-007](frd/FRD-007-replies-with-mention.md)). Every message ends with a position suffix, e.g. `[52.5201,13.4050]` ([FRD-010](frd/FRD-010-gps-attachment.md)).
 

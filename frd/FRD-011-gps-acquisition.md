@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M3) |
 | Milestone | M3 |
 | PRD | US-4 |
 
@@ -18,4 +18,5 @@
 - The last fix survives a temporary signal loss.
 
 ## Implementation notes
+- The pager build forces `gps_enabled = 1`, `gps_interval = 0` in `MyMesh::begin()`. `UITask::updateFix()` polls the provider once per second.
 - GPS pins/power: `PIN_GPS_EN=34` (active LOW), `PIN_GPS_RESET=42`, UART RX 38 / TX 39. Handled by `EnvironmentSensorManager` + `MicroNMEALocationProvider` (`src/helpers/sensors/`).

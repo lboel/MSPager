@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Partially implemented (M2: sender/mention/body. Position: M3) |
+| Status | Implemented (M3) |
 | Milestone | M2, M3 |
 | PRD | §9 (Interoperability, Message size) |
 
@@ -29,9 +29,9 @@
    |---|---|
    | sender + `": "` | 31 + 2 |
    | mention `@[…] ` | 31 + 3 |
-   | body (`Angekommen?`) | 11 |
+   | body (`Mein Standort`, the longest) | 13 |
    | position ` [-12.3456,-123.4567 ~999min]` | 29 |
-   | **Total** | **107** (< 160 ✔) |
+   | **Total** | **109** (< 160 ✔) |
 
 ## Examples
 ```
@@ -39,4 +39,6 @@ Anna: Angekommen? [52.5201,13.4050]
 Ben: Brauche Hilfe [52.5163,13.3777 ~12min]
 Cleo: @[Anna] Ja [no GPS]
 Anna: @[Ben] 📞 [52.5201,13.4050]
+Anna: Standort? [52.5201,13.4050]
+Ben: @[Anna] Mein Standort [52.5163,13.3777]
 ```

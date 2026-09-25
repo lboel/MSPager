@@ -4,6 +4,29 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — M3: Location built
+
+**Done**
+- **GPS always on:** the pager build forces `gps_enabled = 1` in `MyMesh::begin()` (applied by `applyGpsPrefs()` in `main`). `UITask::updateFix()` polls the location provider every 1 s and keeps the last fix + time.
+- **Position suffix on every message** (FRD-010): `[lat,lon]` with 4 decimals. With a fix older than 2 min: `[lat,lon ~Nmin|h|d]`. Never had a fix: `[no GPS]`. Sending is never blocked.
+- **Parsing on receive** (FRD-012): the suffix is stripped from the body into `PagerMsg::pos`. It's tolerant of 1–6 decimals and leaves malformed suffixes and free text untouched.
+- **New `ui-pager/PagerLocation.h`** with format/parse/haversine/compass helpers, host-tested (20 checks incl. Brandenburger Tor → Fernsehturm = 2.2 km E, Munich → Berlin = 504 km N).
+- **Detail view** (FRD-005): the title shows sender + relative position (`1.2km NE`, `~` = stale, `you`, `no GPS`, `no own GPS`). Body at double size. Then absolute coordinates + message age.
+- **Location messages** (FRD-019, user request): `Standort?` / `Mein Standort` in both pickers.
+  - `Standort?` is answered automatically with `@[requester] Mein Standort` after a random 0.5–4 s delay: by everyone for a group request, only by the mentioned pager for a reply.
+  - The answer appears in the answering pager's own chat (transparency).
+  - `Mein Standort` shows distance/direction in the chat list.
+- **Reply picker:** 6 options, so it scrolls through 4 visible rows with an `n/N` counter in the title.
+
+**Decisions**
+- **German wording** `Standort?` / `Mein Standort`, consistent with "canned messages in German" (the user named them "location?" / "share location").
+- **Random answer delay**, because several pagers answering a group request at the same moment would collide.
+- **Relative position** is computed at render time from the *current* own fix to the sender's position *as sent*.
+
+**Process note:** the first commit of M3 (`e2c29eab`) went in with only part of the docs, because a doc-edit script failed after the code was committed. The docs follow in a separate commit.
+
+---
+
 ## 2026-09-25 — Button hints on the main screen
 
 **Request:** the main screen needs button hints like the other screens, short and consistent.
