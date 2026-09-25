@@ -1,0 +1,30 @@
+# MSPager — Functional Requirements (index)
+
+Each functional requirement lives in its own numbered file under [`frd/`](frd/). IDs are permanent. Superseded FRDs are marked, never renumbered. For product context, see [PRD.md](PRD.md). For sequencing, see [ROADMAP.md](ROADMAP.md).
+
+**Status values:** Proposed → Accepted → Implemented → Verified (or Superseded).
+
+| ID | Title | Milestone | Status |
+|---|---|---|---|
+| [FRD-001](frd/FRD-001-hardware-target.md) | Hardware target (Heltec V4 OLED, env `heltec_v4_pager`) | M1 | Proposed |
+| [FRD-002](frd/FRD-002-single-button-input.md) | Single-button input (PRG short/long/double) | M1 | Proposed |
+| [FRD-003](frd/FRD-003-display-power.md) | Display power (off when idle, wake-press consumed) | M1 | Proposed |
+| [FRD-004](frd/FRD-004-main-screen.md) | Main screen: battery + chat room together | M1/M2 | Proposed |
+| [FRD-005](frd/FRD-005-message-detail.md) | Message detail (nickname, distance/bearing, coords) | M3 | Proposed |
+| [FRD-006](frd/FRD-006-canned-messages.md) | Canned messages (compose + reply pickers) | M2 | Proposed |
+| [FRD-007](frd/FRD-007-replies-with-mention.md) | Replies with `@[Nick]` mention | M2 | Proposed |
+| [FRD-008](frd/FRD-008-pager-channel-selection.md) | Pager channel selected by name, others hidden | M2 | Proposed |
+| [FRD-009](frd/FRD-009-sender-nickname.md) | Sender nickname = MeshCore node name | M2 | Proposed |
+| [FRD-010](frd/FRD-010-gps-attachment.md) | GPS attachment (4 decimals ≈ 10 m, last fix + age) | M3 | Proposed |
+| [FRD-011](frd/FRD-011-gps-acquisition.md) | GPS acquisition (always on, last fix kept) | M3 | Proposed |
+| [FRD-012](frd/FRD-012-wire-format.md) | Wire format & length budget | M2/M3 | Proposed |
+| [FRD-013](frd/FRD-013-phone-emoji-rendering.md) | 📞 rendering as custom OLED glyph | M4 | Proposed |
+| [FRD-014](frd/FRD-014-new-message-alert.md) | New-message alert (display wake + LED blink) | M4 | Proposed |
+| [FRD-015](frd/FRD-015-configuration-via-app.md) | Configuration via MeshCore app (BLE always on) | M2 | Proposed |
+| [FRD-016](frd/FRD-016-inbox-storage.md) | Inbox storage (RAM ring buffer, 16 msgs) | M2 | Proposed |
+
+## Adding an FRD
+1. Copy an existing file and take the next free number: `frd/FRD-NNN-<kebab-slug>.md`.
+2. Fill in the header table (Status, Milestone, PRD reference), Requirement, Acceptance criteria and optional Implementation notes.
+3. Add a row to this index and reference the FRD in [ROADMAP.md](ROADMAP.md).
+4. Record the decision in [DEVLOG.md](DEVLOG.md).
