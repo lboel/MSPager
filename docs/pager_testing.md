@@ -80,6 +80,7 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 ### Filtering (FRD-008)
 - [ ] 14. Send a message on **Public** from the app or another node. Neither pager display reacts, but the app still receives it.
 - [ ] 15. Send a **direct message** to A from the app. A's display doesn't react, and the app still receives it.
+- [ ] 15b. With the app connected to A: send `Angekommen?` from **A's button UI**. The app shows it in `Pager` as `Anna: Angekommen?` (listed as coming from `Anna`, not as your own bubble).
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
 ### Robustness

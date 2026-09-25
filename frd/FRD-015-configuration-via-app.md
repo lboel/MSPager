@@ -15,6 +15,7 @@
 3. On first boot, the BLE pairing PIN SHALL be shown on the OLED (existing companion behaviour), keeping the display on until paired or pressed.
 4. Configuration SHALL persist in flash across reboots.
 5. The companion protocol SHALL stay fully functional while connected. Messages sent from the app into the pager channel show up on all pagers, and on the sending pager itself as `me: …`.
+6. Messages sent **from the pager's button UI** SHALL also appear in the app connected to that pager. The companion protocol has no "device-sent" frame, so they're queued as a received channel message `<nickname>: <text>` (0 hops, SNR 0). The stock app shows them as coming from the own nickname.
 
 ## Acceptance criteria
 - A freshly flashed pager can be fully configured with the app alone, with no USB/CLI needed.

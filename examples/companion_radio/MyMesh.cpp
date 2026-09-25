@@ -545,21 +545,21 @@ void MyMesh::onSignedMessageRecv(const ContactInfo &from, mesh::Packet *pkt, uin
   queueMessage(from, TXT_TYPE_SIGNED_PLAIN, pkt, sender_timestamp, sender_prefix, 4, text);
 }
 
-void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packet *pkt, uint32_t timestamp,
-                                  const char *text) {
+// queue a channel text for the app, as RESP_CODE_CHANNEL_MSG_RECV(_V3)
+void MyMesh::queueChannelMsgForApp(uint8_t channel_idx, int8_t snr_x4, uint8_t path_len, uint32_t timestamp,
+                                   const char *text) {
   int i = 0;
   if (app_target_ver >= 3) {
     out_frame[i++] = RESP_CODE_CHANNEL_MSG_RECV_V3;
-    out_frame[i++] = (int8_t)(pkt->getSNR() * 4);
+    out_frame[i++] = snr_x4;
     out_frame[i++] = 0; // reserved1
     out_frame[i++] = 0; // reserved2
   } else {
     out_frame[i++] = RESP_CODE_CHANNEL_MSG_RECV;
   }
 
-  uint8_t channel_idx = findChannelIdx(channel);
   out_frame[i++] = channel_idx;
-  uint8_t path_len = out_frame[i++] = pkt->isRouteFlood() ? pkt->path_len : 0xFF;
+  out_frame[i++] = path_len;
 
   out_frame[i++] = TXT_TYPE_PLAIN;
   memcpy(&out_frame[i], &timestamp, 4);
@@ -576,7 +576,16 @@ void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packe
     uint8_t frame[1];
     frame[0] = PUSH_CODE_MSG_WAITING; // send push 'tickle'
     _serial->writeFrame(frame, 1);
-  } else {
+  }
+}
+
+void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packet *pkt, uint32_t timestamp,
+                                  const char *text) {
+  uint8_t channel_idx = findChannelIdx(channel);
+  uint8_t path_len = pkt->isRouteFlood() ? pkt->path_len : 0xFF;
+  queueChannelMsgForApp(channel_idx, (int8_t)(pkt->getSNR() * 4), path_len, timestamp, text);
+
+  if (!_serial->isConnected()) {
 #ifdef DISPLAY_CLASS
     if (_ui) _ui->notify(UIEventType::channelMessage);
 #endif
@@ -1024,7 +1033,14 @@ bool MyMesh::sendPagerMessage(const char* text) {
   int idx = findPagerChannel();
   if (idx < 0 || !getChannel(idx, ch)) return false;
   uint32_t ts = getRTCClock()->getCurrentTimeUnique();
-  return sendGroupMessage(ts, ch.channel, _prefs.node_name, text, strlen(text));
+  if (!sendGroupMessage(ts, ch.channel, _prefs.node_name, text, strlen(text))) return false;
+
+  // The companion protocol has no frame for device-originated sends, so hand the
+  // message to the app like a received one (same "<name>: <text>" format as on air).
+  char echo[32 + 2 + MAX_TEXT_LEN + 1];
+  snprintf(echo, sizeof(echo), "%s: %s", _prefs.node_name, text);
+  queueChannelMsgForApp(idx, 0, 0, ts, echo);
+  return true;
 }
 #endif
 

@@ -137,6 +137,7 @@ protected:
                          const char *text) override;
   void onSignedMessageRecv(const ContactInfo &from, mesh::Packet *pkt, uint32_t sender_timestamp,
                            const uint8_t *sender_prefix, const char *text) override;
+  void queueChannelMsgForApp(uint8_t channel_idx, int8_t snr_x4, uint8_t path_len, uint32_t timestamp, const char *text);
   void onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packet *pkt, uint32_t timestamp,
                             const char *text) override;
   void onChannelDataRecv(const mesh::GroupChannel &channel, mesh::Packet *pkt, uint16_t data_type,

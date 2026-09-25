@@ -4,6 +4,18 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — M2 fix: pager-sent messages visible in the app
+
+**Test feedback:** a message sent from the pager's button didn't show up in the app connected to that pager.
+
+**Cause:** the companion protocol only reports messages the app sent itself (`PACKET_MSG_SENT`) or messages received over the air. There's no frame for "the device sent this on its own".
+
+**Fix:** `MyMesh::sendPagerMessage()` now also queues the message for the app as a received channel message `<nickname>: <text>` (0 hops, SNR 0), with the same timestamp as the on-air packet. To avoid duplicating code, the frame building moved out of `onChannelMessageRecv()` into `MyMesh::queueChannelMsgForApp()` (the stock receive path is byte-identical).
+
+**Limitation:** the stock app shows these as incoming messages from the own nickname, not as own ("sent") bubbles. Fixing that would need an app change.
+
+---
+
 ## 2026-09-25 — M2: Messaging built
 
 **Done**
