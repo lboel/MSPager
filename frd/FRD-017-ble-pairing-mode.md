@@ -14,7 +14,7 @@ Cause: the ESP32 BLE stack **stops advertising while any peer holds a connection
 ## Requirement
 1. Holding **PRG for ≥ 10 s** (`PAGER_PAIRING_HOLD_MILLIS`) SHALL enter **pairing mode**, from any screen, including with the display off.
 2. On entry, the pager SHALL **drop the current BLE connection** and **restart advertising** (BLE disable, then enable ~0.5 s later).
-3. The pairing screen SHALL show the **BLE PIN in large digits** (text size 3), the nickname, a countdown and the hint `Tap:cancel`.
+3. The pairing screen SHALL show the **BLE PIN in large digits** (text size 3), the nickname, a countdown and the hint `1x:cancel`.
 4. Pairing mode SHALL end:
    - when a **new authenticated connection** is established → popup `Connected`, or
    - after **30 s** (`PAGER_PAIRING_SECS`) → popup `Pairing timeout`, or

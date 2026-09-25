@@ -27,14 +27,14 @@
 
    | State | Hint |
    |---|---|
-   | no messages | `Hold:send 2x:off` |
+   | no messages | `2x:off hold:send` |
    | no pager channel | `2x:off` |
-   | messages, nothing selected | `Tap:↑ Hold:send` |
-   | message selected | `Tap:↑ Hold:open 2x:←` |
+   | messages, nothing selected | `1x:↑ 2x:off hold:send` |
+   | message selected | `1x:↑ 2x:← hold:open` |
 
-   Other screens: detail `Hold:reply 2x:←`, pickers `Tap:↓ Hold:send 2x:←`, pairing `Tap:cancel`.
+   Other screens: detail `2x:← hold:reply`, pickers `1x:↓ 2x:← hold:send`, pairing `1x:cancel`.
 
-   Arrows show the direction a gesture moves: **↑** = select the next older message (the list grows upward), **↓** = next option in a picker, **←** = back/cancel. They're CP437 characters 0x18/0x19/0x1B from the display font. Hints use single spaces so the longest one (`Tap:↑ Hold:open 2x:←`, 20 characters) fits 21 columns.
+   Arrows show the direction a gesture moves: **↑** = select the next older message (the list grows upward), **↓** = next option in a picker, **←** = back/cancel. They're CP437 characters 0x18/0x19/0x1B from the display font. Format: `1x:<action> 2x:<action> hold:<action>`, always in that order, showing **only the gestures that do something** on that screen (e.g. the detail view has no `1x`). Single spaces. The longest hint (`1x:↑ 2x:off hold:send`) is exactly 21 columns.
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
@@ -46,7 +46,7 @@ rows 2–6 (5 message lines, oldest at top, newest at bottom), then the hint row
       |Ben: Brauche Hilfe      |
       |•Cleo: @Ben [☎]         |
 |────────────────────────|
-|Tap:↑ Hold:send         |
+|1x:↑ 2x:off hold:send   |
 ```
 
 ### Selected layout

@@ -479,7 +479,7 @@ void UITask::renderPairing() {
   if (left < 0) left = 0;
   snprintf(tmp, sizeof(tmp), "%s  %lds", _node_prefs->node_name, left);
   _display->drawTextCentered(_display->width() / 2, 44, tmp);
-  renderHint("Tap:cancel");
+  renderHint("1x:cancel");
 }
 
 // ---------------------------------------------------------------- rendering
@@ -648,16 +648,16 @@ void UITask::renderChat() {
       return;
     }
     _display->drawTextCentered(_display->width() / 2, 28, "No messages yet");
-    renderHint("Hold:send 2x:off");
+    renderHint("2x:off hold:send");
     return;
   }
 
   if (_sel >= 0) {
     renderChatSelected();
-    renderHint("Tap:" ARROW_UP " Hold:open 2x:" ARROW_LEFT);
+    renderHint("1x:" ARROW_UP " 2x:" ARROW_LEFT " hold:open");
     return;
   }
-  renderHint("Tap:" ARROW_UP " Hold:send");
+  renderHint("1x:" ARROW_UP " 2x:off hold:send");
 
   // latest CHAT_LINES messages, newest at the bottom
   int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
@@ -760,7 +760,7 @@ void UITask::renderDetail() {
   renderText(0, 45, _display->width() - age_w - CHAR_W, coords);
   renderText(_display->width() - age_w, 45, age_w, age);
 
-  renderHint("Hold:reply 2x:" ARROW_LEFT);
+  renderHint("2x:" ARROW_LEFT " hold:reply");
 }
 
 void UITask::renderPicker(bool reply) {
@@ -796,7 +796,7 @@ void UITask::renderPicker(bool reply) {
     renderText(4, y, _display->width() - 8, opts[i]);
   }
 
-  renderHint("Tap:" ARROW_DOWN " Hold:send 2x:" ARROW_LEFT);
+  renderHint("1x:" ARROW_DOWN " 2x:" ARROW_LEFT " hold:send");
 }
 
 // ---------------------------------------------------------------- loop

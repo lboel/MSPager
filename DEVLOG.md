@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Hint format `1x / 2x / hold`
+
+**Request:** show hints as `1x:<↑/↓> 2x:<←> hold:<send/open>`, only the options that are possible.
+
+**Done:** all hints follow `1x:… 2x:… hold:…` (in that order, gestures without an action left out):
+- overview: `2x:off hold:send` (empty), `1x:↑ 2x:off hold:send`, and with a selection `1x:↑ 2x:← hold:open`
+- detail: `2x:← hold:reply`
+- pickers: `1x:↓ 2x:← hold:send`
+- pairing: `1x:cancel`
+
+The overview without a selection now also shows `2x:off`, which fits in exactly 21 columns.
+
+---
+
 ## 2026-09-25 — M4: Alerting & polish built
 
 **User requests for M4:** no different blink speeds; blink until the overview is opened with a tap; the phone emoji should look more like a phone on the display (the wire stays the official emoji).

@@ -14,7 +14,7 @@ Flashing: see [pager_flashing.md](pager_flashing.md). For M1, use `out/heltec_v4
 
 ### Boot
 - [ ] 1. After flashing and pressing RST: the OLED shows **MSPager**, the version (`v0.1.0-m1-…`), the node name and **BLE PIN: nnnnnn**.
-- [ ] 2. After ~5 s it switches to the chat screen: a header with the node name and battery icon, a separator line, "No messages yet" and the hint `Hold:send 2x:off` at the bottom.
+- [ ] 2. After ~5 s it switches to the chat screen: a header with the node name and battery icon, a separator line, "No messages yet" and the hint `2x:off hold:send` at the bottom.
 - [ ] 3. The battery icon fill looks plausible (with and without a LiPo attached).
 
 ### Display power (FRD-003)
@@ -29,13 +29,13 @@ Flashing: see [pager_flashing.md](pager_flashing.md). For M1, use `out/heltec_v4
 - [ ] 10. **Short** press cycles the highlight and wraps around.
 - [ ] 11. **Double** press cancels back to chat, and nothing is added.
 - [ ] 12. Long press → select `Brauche Hilfe` → **long** press: the popup `M1: local only` appears, and chat shows `me: Brauche Hilfe`.
-- [ ] 13. Add 7 or more messages this way. Chat shows the **latest 5**, newest at the bottom, with the hint `Tap:↑ Hold:send`.
+- [ ] 13. Add 7 or more messages this way. Chat shows the **latest 5**, newest at the bottom, with the hint `1x:↑ 2x:off hold:send`.
 
 ### Selection, detail, reply (FRD-002, FRD-004, FRD-005, FRD-007)
-- [ ] 14. Chat → **short** press: the newest message is highlighted (enlarged, inverted), and the hint changes to `Tap:↑ Hold:open 2x:←`.
+- [ ] 14. Chat → **short** press: the newest message is highlighted (enlarged, inverted), and the hint changes to `1x:↑ 2x:← hold:open`.
 - [ ] 15. Further **short** presses move the highlight to older messages. The list scrolls up past the top line. After the oldest, the selection clears.
 - [ ] 16. With a selection → **double** press: the selection clears (the display stays on).
-- [ ] 17. With a selection → **long** press: the detail screen shows the sender in the title bar, the message, the age ("just now" / "N min ago"), "Position: unknown" and `Hold:reply 2x:←`.
+- [ ] 17. With a selection → **long** press: the detail screen shows the sender in the title bar, the message, the age ("just now" / "N min ago"), "Position: unknown" and `2x:← hold:reply`.
 - [ ] 18. Detail → **double** press: back to chat, with the selection kept.
 - [ ] 19. Detail → **long** press: the "Reply to me" picker shows `Ja`, `Nein`, `OK` and a **phone handset icon** (FRD-013).
 - [ ] 20. Pick the phone icon → **long** press: chat shows `me: @<own node name> [handset icon]`.
@@ -93,7 +93,7 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 16o2. While scrolling (detail **and** selected block), no character fragments appear on the row below. Characters enter smoothly at the right edge.
 
 ### Button hints (FRD-004)
-- [ ] 16p. Every screen shows its hint in the bottom row below a line: chat (3 variants per FRD-004), detail `Hold:reply 2x:←`, pickers `Tap:↓ Hold:send 2x:←`, pairing `Tap:cancel`. The arrows show as real arrow symbols, not blanks.
+- [ ] 16p. Every screen shows its hint in the bottom row below a line: chat (3 variants per FRD-004), detail `2x:← hold:reply`, pickers `1x:↓ 2x:← hold:send`, pairing `1x:cancel`. The arrows show as real arrow symbols, not blanks.
 - [ ] 16q. No text overlaps the hint row (check a selected message with an older and a newer neighbour, and the detail view).
 
 ### Header: name + battery icon (FRD-004)

@@ -24,7 +24,7 @@
 |Angekommen?            |   body at double size, one line, scrolls if long
 |52.5201,13.4050    5min|   absolute position + message age
 |───────────────────────|
-|Hold:reply 2x:←        |
+|2x:← hold:reply        |
 ```
 
 ## Acceptance criteria
