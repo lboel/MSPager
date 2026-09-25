@@ -118,14 +118,19 @@ All pagers in a group need the **same radio preset** and the **same `Pager` chan
 - Make sure the preset matches any MeshCore repeaters you want to use.
 
 ### 5.4 Pager channel
-**On the first pager only:**
-1. Add a new **private channel** named exactly **`Pager`** (case-sensitive).
-2. Let the app generate a random key.
-3. Keep the app's **QR code / share key** screen open for the next pagers.
+Every pager creates a channel named **`Pager`** with its **own random key** on first boot. You'll see it in the app's channel list right away. For pagers to talk to each other, they all need the **same key**, so pick one pager's key as the group key:
+
+**On the first pager (the "key master"):**
+1. Open the `Pager` channel in the app and show its **QR code / share key**.
+2. Keep that screen open (or save the QR code) for the other pagers.
 
 **On every other pager:**
-1. Add a channel by **scanning the QR code** (or entering the same name + key).
-2. Double-check that the name is exactly `Pager`.
+1. **Delete** its auto-created `Pager` channel in the app.
+2. Add a channel by **scanning the first pager's QR code** (or entering the same name + key).
+3. Double-check that the name is exactly `Pager` (case-sensitive).
+
+> If you forget step 1, it still works: when two `Pager` channels exist, the pager sends on the one added last (the imported one). Deleting the old one avoids confusion.
+> If you delete `Pager` entirely, the pager creates a new one with a new random key on the next reboot.
 
 > The pager ignores the Public channel and all other channels. It only shows `Pager`.
 
@@ -169,7 +174,7 @@ Optional: a phone with the MeshCore app joined to the `Pager` channel sees the s
 
 | Symptom | Likely cause / fix |
 |---|---|
-| Display shows `No 'Pager' channel` | The channel is missing or misspelled. Re-add it in the app, exactly `Pager` |
+| Display shows `No 'Pager' channel` | The channel was renamed or deleted. Reboot (RST) to auto-create a new one, then share the group key again (§5.4) |
 | Messages don't arrive | Different radio preset or channel key between pagers. Check §5.3/§5.4 on both |
 | Only some messages arrive | Out of range. Add or position a MeshCore repeater, and check the antenna |
 | Always `[no GPS]` | GPS module not plugged in before power-on, or no fix yet. Go outdoors and wait a few minutes |

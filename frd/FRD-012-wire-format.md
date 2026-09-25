@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Partially implemented (M2: sender/mention/body. Position: M3) |
 | Milestone | M2, M3 |
 | PRD | §9 (Interoperability, Message size) |
 

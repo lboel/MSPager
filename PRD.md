@@ -87,7 +87,7 @@ Replies carry a mention of the original sender, e.g. `@[Anna] Ja` ([FRD-007](frd
 |---|---|---|
 | Firmware base | Fork of the MeshCore **companion radio** firmware with a new pager UI | Reuses channel crypto, BLE app config and GPS support |
 | Configuration | Stock MeshCore app over **BLE, always on** | No custom tooling. Nickname = MeshCore node name |
-| Pager channel | Chosen **by name** (`PAGER_CHANNEL_NAME`, default `Pager`) | Robust against the channel's slot order in the app |
+| Pager channel | Chosen **by name** (`PAGER_CHANNEL_NAME`, default `Pager`). **Auto-created** with a random key, so it's visible in the app right away | Robust against slot order. No shared secret in the firmware |
 | Message format | **Plain text** incl. position suffix | Readable in stock MeshCore apps (US-8) |
 | Position precision | **4 decimals (≈10 m max)** | Enough to find someone, limits exposure of exact location |
 | No GPS fix | Send last known position + age, or `[no GPS]` | **Never block sending**, especially "Brauche Hilfe" |

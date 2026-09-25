@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M2) |
 | Milestone | M2 |
 | PRD | US-3 |
 

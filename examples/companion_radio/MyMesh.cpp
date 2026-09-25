@@ -467,6 +467,9 @@ void MyMesh::queueMessage(const ContactInfo &from, uint8_t txt_type, mesh::Packe
 #ifdef DISPLAY_CLASS
   // we only want to show text messages on display, not cli data
   bool should_display = txt_type == TXT_TYPE_PLAIN || txt_type == TXT_TYPE_SIGNED_PLAIN;
+#ifdef PAGER_CHANNEL_NAME
+  should_display = false;  // pager shows only its channel (FRD-008)
+#endif
   if (should_display && _ui) {
     _ui->newMsg(path_len, from.name, text, offline_queue_len);
     if (!_serial->isConnected()) {
@@ -585,6 +588,9 @@ void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packe
   if (getChannel(channel_idx, channel_details)) {
     channel_name = channel_details.name;
   }
+#ifdef PAGER_CHANNEL_NAME
+  if (strcmp(channel_name, PAGER_CHANNEL_NAME) != 0) return;  // other channels: app only (FRD-008)
+#endif
   if (_ui) _ui->newMsg(path_len, channel_name, text, offline_queue_len);
 #endif
 }
@@ -972,6 +978,9 @@ void MyMesh::begin(bool has_display) {
   bootstrapRTCfromContacts();
   addChannel("Public", PUBLIC_GROUP_PSK); // pre-configure Andy's public channel
   _store->loadChannels(this);
+#ifdef PAGER_CHANNEL_NAME
+  ensurePagerChannel();
+#endif
 
   radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
   radio_driver.setTxPower(_prefs.tx_power_dbm);
@@ -981,6 +990,43 @@ void MyMesh::begin(bool has_display) {
   MESH_DEBUG_PRINTLN("RX Boosted Gain Mode: %s",
                      radio_driver.getRxBoostedGainMode() ? "Enabled" : "Disabled");
 }
+
+#ifdef PAGER_CHANNEL_NAME
+// Last match wins: a group key imported via the app lands after the auto-seeded channel.
+int MyMesh::findPagerChannel() {
+  ChannelDetails ch;
+  int found = -1;
+  for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
+    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) found = i;
+  }
+  return found;
+}
+
+// Seed the pager channel with a random 128-bit key so it shows up in the app.
+// The group then shares one key via the app (QR code) - see FRD-008.
+void MyMesh::ensurePagerChannel() {
+  if (findPagerChannel() >= 0) return;
+
+  ChannelDetails ch;
+  for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
+    if (ch.name[0] == 0) {   // free slot
+      memset(&ch, 0, sizeof(ch));
+      StrHelper::strncpy(ch.name, PAGER_CHANNEL_NAME, sizeof(ch.name));
+      getRNG()->random(ch.channel.secret, 16);
+      if (setChannel(i, ch)) saveChannels();
+      return;
+    }
+  }
+}
+
+bool MyMesh::sendPagerMessage(const char* text) {
+  ChannelDetails ch;
+  int idx = findPagerChannel();
+  if (idx < 0 || !getChannel(idx, ch)) return false;
+  uint32_t ts = getRTCClock()->getCurrentTimeUnique();
+  return sendGroupMessage(ts, ch.channel, _prefs.node_name, text, strlen(text));
+}
+#endif
 
 const char *MyMesh::getNodeName() {
   return _prefs.node_name;
@@ -1144,6 +1190,13 @@ void MyMesh::handleCmdFrame(size_t len) {
       bool success = getChannel(channel_idx, channel);
       if (success && sendGroupMessage(msg_timestamp, channel.channel, _prefs.node_name, text, len - i)) {
         writeOKFrame();
+#if defined(PAGER_CHANNEL_NAME) && defined(DISPLAY_CLASS)
+        if (_ui && strcmp(channel.name, PAGER_CHANNEL_NAME) == 0) {  // show app-sent message on the pager as own
+          char echo[32 + 2 + MAX_TEXT_LEN + 1];
+          snprintf(echo, sizeof(echo), "%s: %.*s", _prefs.node_name, len - i, text);
+          _ui->newMsg(0, channel.name, echo, offline_queue_len);
+        }
+#endif
       } else {
         writeErrFrame(ERR_CODE_NOT_FOUND); // bad channel_idx
       }

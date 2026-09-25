@@ -4,6 +4,31 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — M2: Messaging built
+
+**Done**
+- Messages are now actually sent: `MyMesh::sendPagerMessage()` sends the canned text (plus mention) on the pager channel via `sendGroupMessage`. The UI shows `Sent` or `Send failed`.
+- **The channel appears in the app by default:** `MyMesh::ensurePagerChannel()` runs after `loadChannels()`. If there's no `Pager` channel, it creates one in the first free slot with a **random 128-bit key** and saves it.
+- Lookup by name via `MyMesh::findPagerChannel()`. **Last match wins**, so importing a group QR without deleting the auto-created channel still works.
+- Receive filter: only pager-channel messages reach the UI. Other channels and DMs still go to the app's offline queue but never touch the display.
+- Messages the app sends into `Pager` over BLE appear on the sending pager as `me: …` (no alert). Messages whose sender equals the own node name are treated as own.
+- Mentions: `@[<own nick>]` sets the "for me" flag, shown as `»` in chat.
+- Fix: the unread bullet (CP437 0x07) was rendered as a space in M1. Markers are now printed raw.
+- All pager changes in `MyMesh` are behind `#ifdef PAGER_CHANNEL_NAME`. The stock `heltec_v4_companion_radio_ble` still builds unchanged.
+- Test checklist: [docs/pager_testing.md § M2](docs/pager_testing.md).
+
+**Decisions**
+- **Random key per device** for the auto-created channel (the user's choice over a build-time group key or a fixed repo key). It shows up in the app but needs one key shared by QR to form a group. There's no secret in the firmware or repo.
+- A deleted `Pager` channel is re-created with a new key on the next reboot.
+
+**Open**
+- M1 hasn't been device-tested yet. Both checklists are pending.
+
+**Next**
+- M3: GPS always on, position suffix (4 decimals), parsing, distance/bearing in detail.
+
+---
+
 ## 2026-09-25 — M1: Skeleton built
 
 **Done**

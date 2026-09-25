@@ -14,6 +14,10 @@
 #include "../AbstractUITask.h"
 #include "../NodePrefs.h"
 
+#ifndef PAGER_CHANNEL_NAME
+  #error "ui-pager requires PAGER_CHANNEL_NAME (see env heltec_v4_pager)"
+#endif
+
 #ifndef PAGER_DISPLAY_TIMEOUT_SECS
   #define PAGER_DISPLAY_TIMEOUT_SECS  15
 #endif
@@ -28,6 +32,7 @@ struct PagerMsg {
   unsigned long rx_millis;
   bool own;
   bool unread;
+  bool for_me;    // mentions this pager's nickname (FRD-007)
 };
 
 class UITask : public AbstractUITask {

@@ -164,7 +164,16 @@ protected:
     pending_login = pending_status = pending_telemetry = pending_discovery = pending_req = 0;
   }
 
+#ifdef PAGER_CHANNEL_NAME
+  void ensurePagerChannel();
+#endif
+
 public:
+#ifdef PAGER_CHANNEL_NAME
+  int findPagerChannel();                   // slot of the channel named PAGER_CHANNEL_NAME, or -1
+  bool sendPagerMessage(const char* text);  // sends "<node_name>: <text>" on the pager channel
+#endif
+
   void savePrefs() {
     _prefs.node_lat = sensors.node_lat;
     _prefs.node_lon = sensors.node_lon;

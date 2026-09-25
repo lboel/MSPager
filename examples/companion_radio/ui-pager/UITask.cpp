@@ -89,6 +89,10 @@ PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own) {
   m->rx_millis = millis();
   m->own = own;
   m->unread = !own;
+
+  char mention[40];
+  snprintf(mention, sizeof(mention), "@[%s] ", _node_prefs->node_name);
+  m->for_me = !own && strncmp(body, mention, strlen(mention)) == 0;
   return m;
 }
 
@@ -107,17 +111,25 @@ void UITask::msgRead(int msgcount) {
 }
 
 void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, int msgcount) {
-  // Channel texts arrive as "<sender>: <body>". M1 shows every message;
-  // filtering to the pager channel follows in M2 (FRD-008).
+  // MyMesh only forwards pager-channel texts here (FRD-008). They arrive as "<sender>: <body>" (FRD-009).
   const char* sep = strstr(text, ": ");
-  if (sep && sep - text < 32) {
-    char sender[32];
+  char sender[32];
+  const char* body = text;
+  if (sep && sep - text < (int)sizeof(sender)) {
     snprintf(sender, sizeof(sender), "%.*s", (int)(sep - text), text);
-    addMsg(sender, sep + 2, false);
+    body = sep + 2;
   } else {
-    addMsg(from_name, text, false);
+    snprintf(sender, sizeof(sender), "?");
   }
 
+  // own messages (sent from the app over BLE) are shown as "me" and don't alert
+  if (strcmp(sender, _node_prefs->node_name) == 0) {
+    addMsg("me", body, true);
+    _next_refresh = 0;
+    return;
+  }
+
+  addMsg(sender, body, false);
   if (_screen == Screen::CHAT || _screen == Screen::BOOT) {
     setScreen(Screen::CHAT);
   }
@@ -196,6 +208,10 @@ void UITask::handleLong() {
       markVisibleRead();
       _option = 0;
       if (_sel < 0) {
+        if (the_mesh.findPagerChannel() < 0) {
+          showAlert("No '" PAGER_CHANNEL_NAME "' channel", 1500);
+          break;
+        }
         setScreen(Screen::COMPOSE);
       } else {
         msgAt(_sel)->unread = false;
@@ -250,9 +266,12 @@ void UITask::sendCanned(const char* text, const char* mention_to) {
   } else {
     snprintf(body, sizeof(body), "%s", text);
   }
-  // M1: local echo only. Sending on the pager channel follows in M2 (FRD-006/008).
-  addMsg("me", body, true);
-  showAlert("M1: local only", 1200);
+  if (the_mesh.sendPagerMessage(body)) {
+    addMsg("me", body, true);
+    showAlert("Sent", 1000);
+  } else {
+    showAlert("Send failed", 1500);
+  }
 }
 
 // ---------------------------------------------------------------- rendering
@@ -344,6 +363,11 @@ void UITask::renderChat() {
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 
   if (_inbox_count == 0) {
+    if (the_mesh.findPagerChannel() < 0) {
+      _display->drawTextCentered(_display->width() / 2, 26, "No '" PAGER_CHANNEL_NAME "' channel");
+      _display->drawTextCentered(_display->width() / 2, 42, "Configure via app");
+      return;
+    }
     _display->drawTextCentered(_display->width() / 2, 26, "No messages yet");
     _display->drawTextCentered(_display->width() / 2, 42, "Hold: send");
     return;
@@ -361,7 +385,14 @@ void UITask::renderChat() {
     char body[MAX_TEXT_LEN + 1];
     compactMention(body, sizeof(body), m->body);
     char line[MAX_TEXT_LEN + 40];
-    snprintf(line, sizeof(line), "%s%s: %s", m->unread ? "\x07" : "", m->sender, body);
+    snprintf(line, sizeof(line), "%s: %s", m->sender, body);
+
+    // CP437 markers, printed raw (renderText treats bytes >= 0x80 as UTF-8)
+    char prefix[3];
+    int np = 0;
+    if (m->unread) prefix[np++] = '\x07';  // bullet
+    if (m->for_me) prefix[np++] = '\xAF';  // >>
+    prefix[np] = 0;
 
     if (selected) {
       _display->setColor(UIColor::title_txt);
@@ -370,7 +401,11 @@ void UITask::renderChat() {
     } else {
       _display->setColor(UIColor::primary_txt);
     }
-    renderText(0, y, _display->width(), line);
+    if (np > 0) {
+      _display->setCursor(0, y);
+      _display->print(prefix);
+    }
+    renderText(np * CHAR_W, y, _display->width() - np * CHAR_W, line);
   }
   _display->setColor(UIColor::primary_txt);
 }
