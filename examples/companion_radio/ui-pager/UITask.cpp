@@ -90,6 +90,7 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 
   if (_display != NULL) {
     _display->turnOn();
+    _display->setTextWrap(false);   // clip at the right edge; wrapping leaked scrolling text into the next row
   }
   _boot_until = millis() + BOOT_SCREEN_MILLIS;
   _auto_off = _boot_until + AUTO_OFF_MILLIS;

@@ -90,6 +90,7 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 16m. A selected `📞` reply shows a **large** handset icon.
 - [ ] 16n. Step through all messages with short presses: the block moves, and nothing overlaps or runs off the bottom (also for the oldest and newest message).
 - [ ] 16o. Open the detail view: the message is at double size on one line, and long text scrolls the same way.
+- [ ] 16o2. While scrolling (detail **and** selected block), no character fragments appear on the row below. Characters enter smoothly at the right edge.
 
 ### Button hints (FRD-004)
 - [ ] 16p. Every screen shows its hint in the bottom row below a line: chat (3 variants per FRD-004), detail `Hold:reply 2x:←`, pickers `Tap:↓ Hold:send 2x:←`, pairing `Tap:cancel`. The arrows show as real arrow symbols, not blanks.

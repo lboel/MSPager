@@ -4,6 +4,16 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Bug: scrolling text leaked into the next row
+
+**Report:** in the detail view, a scrolling long message showed the next character on the line below.
+
+**Cause:** Adafruit GFX has text wrap on by default. A character that would cross the right display edge is printed at the start of the next text row instead of being clipped. The marquee constantly places a character there.
+
+**Fix:** new `DisplayDriver::setTextWrap(bool)` (default no-op; `SSD1306Display` passes it to Adafruit GFX). `UITask::begin()` switches wrap off, so text is clipped at the edge and characters scroll in smoothly. The shared driver change is additive only, and the stock companion still builds.
+
+---
+
 ## 2026-09-25 — Arrow symbols in button hints
 
 **Request:** replace "select" with ↑/↓ depending on the screen and "back" with ←, and show the Tap option on a selected message too.

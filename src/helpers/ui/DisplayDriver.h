@@ -28,6 +28,7 @@ public:
   virtual void clear() = 0;
   virtual void startFrame(ColorVal bkg = UIColor::window_bkg) = 0;
   virtual void setTextSize(int sz) = 0;
+  virtual void setTextWrap(bool wrap) { }   // false: text past the right edge is clipped instead of wrapped
   virtual void setColor(ColorVal c) = 0;
   virtual void setCursor(int x, int y) = 0;
   virtual void print(const char* str) = 0;

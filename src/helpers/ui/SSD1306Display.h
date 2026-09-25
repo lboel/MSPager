@@ -37,6 +37,7 @@ public:
   void clear() override;
   void startFrame(ColorVal bkg = UIColor::window_bkg) override;
   void setTextSize(int sz) override;
+  void setTextWrap(bool wrap) override { display.setTextWrap(wrap); }
   void setColor(ColorVal c) override;
   void setCursor(int x, int y) override;
   void print(const char* str) override;
