@@ -8,10 +8,10 @@
 
 ## Requirement
 1. The main screen SHALL show, **at the same time**:
-   - a **header row** with the pager's **nickname** (left), and a **battery icon** (right, fill level = charge, no percentage text). The BLE PIN is **not** shown here, only on the boot screen and in pairing mode ([FRD-017](FRD-017-ble-pairing-mode.md)), and
+   - a **header row** with the pager's **nickname** (left), a **GPS status icon** (left of the battery: filled location pin = current fix, hollow slashed pin = no fix; a fix counts as current if the last valid GPS reading is < 5 s old) and a **battery icon** (right, fill level = charge, no percentage text). The BLE PIN is **not** shown here, only on the boot screen and in pairing mode ([FRD-017](FRD-017-ble-pairing-mode.md)), and
    - the **chat room**: the latest pager-channel messages, newest at the bottom.
 2. No other status information (GPS, BLE state, unread count) SHALL be shown on this screen.
-   - Header budget (128 px): battery icon ≈ 23 px + 1 column gap, so the name gets **16 characters**. Longer names are ellipsized.
+   - Header budget (128 px): battery icon ≈ 23 px, GPS icon 8 px + gaps, so the name gets **14 characters**. Longer names are ellipsized.
 3. Each message SHALL take one line in the form `<sender>: <text>`:
    - `<sender>` is the nickname ([FRD-009](FRD-009-sender-nickname.md)). Own messages show the sender as `me`.
    - `<text>` is the canned message without the position suffix. Mentions are shown compactly as `@Anna Ja`.
@@ -36,7 +36,7 @@
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
-row 0 |Anna              [▮▮▮ ]|   header: nickname, battery icon
+row 0 |Anna            ⌖ [▮▮▮ ]|   header: nickname, GPS status, battery icon
 row 1 |────────────────────────|   separator line
 rows 2–6 (5 message lines, oldest at top, newest at bottom), then the hint row:
       |Anna: Angekommen?       |

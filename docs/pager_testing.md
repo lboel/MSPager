@@ -98,7 +98,7 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 ### Header: name + battery icon (FRD-004)
 - [ ] 16b. The chat header shows only the nickname (left) and a battery icon (right). No PIN and no percentage.
 - [ ] 16c. The PIN is visible on the boot screen and in pairing mode (hold 10 s).
-- [ ] 16d. A 16-character name is shown in full. Longer names get cut off with `...`.
+- [ ] 16d. A 14-character name is shown in full. Longer names get cut off with `...`.
 
 ### BLE pairing mode (FRD-017)
 - [ ] 16e. With the app connected: on the chat screen, **hold PRG 10 s**. The app disconnects, and the screen shows "Bluetooth pairing", the PIN in large digits, the name and a 30 s countdown.
@@ -183,6 +183,8 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, different nicknames, GPS modules attached. For the first fix, go outdoors with a clear view of the sky for 2–5 min.
 
 ### GPS & suffix (FRD-010, FRD-011, FRD-012)
+- [ ] 0a. Indoors after boot: the header shows the **slashed pin** left of the battery.
+- [ ] 0b. Outdoors: once the fix is there, it turns into a **filled pin** (within ~1 s). Back indoors, it's slashed again within ~5 s of losing the fix.
 - [ ] 1. Before any fix (indoors, fresh boot): send `Angekommen?` from A. The app connected to B shows `A: Angekommen? [no GPS]`, and B's detail shows `no GPS` / `no GPS fix`.
 - [ ] 2. Outdoors, after a fix: send again. The app shows `[lat,lon]` with **exactly 4 decimals**, and B's detail shows the same coordinates.
 - [ ] 3. Take A indoors until the fix is lost (> 2 min), then send. The suffix carries `~Nmin`, and B's relative position starts with `~`.

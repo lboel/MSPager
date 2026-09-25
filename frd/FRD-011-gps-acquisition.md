@@ -11,7 +11,8 @@
 2. The GPS SHALL stay powered while the device is on (needed for the ≤ 2 min freshness in [FRD-010](FRD-010-gps-attachment.md)).
 3. The firmware SHALL keep the **last valid fix** (lat, lon, timestamp in `millis()`) in RAM.
 4. The device clock MAY be synced from GPS time (existing companion behaviour).
-5. Automatic GPS-based advert/location broadcasts SHALL stay off (`gps_interval = 0`). Position is only shared inside messages.
+5. The GPS state SHALL be visible at all times in the chat header ([FRD-004](FRD-004-main-screen.md)): a location pin with a fix, a slashed pin without.
+6. Automatic GPS-based advert/location broadcasts SHALL stay off (`gps_interval = 0`). Position is only shared inside messages.
 
 ## Acceptance criteria
 - After a cold boot outdoors, a fix is obtained and used within the module's normal TTFF (< 2 min typical).

@@ -37,6 +37,11 @@ static const uint8_t phone_glyph_2x[32] = {   // pixel-doubled, 16x16
   0x00,0x00, 0x00,0x00, 0x0F,0xF0, 0x0F,0xF0, 0x3F,0xFC, 0x3F,0xFC, 0xFC,0x3F, 0xFC,0x3F,
   0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00 };
 
+// GPS status icons, 8x8, MSB first (header, left of the battery)
+static const uint8_t gps_fix_icon[8]   = { 0x3C, 0x7E, 0xE7, 0xE7, 0x7E, 0x3C, 0x18, 0x18 };  // filled pin
+static const uint8_t gps_nofix_icon[8] = { 0x3D, 0x42, 0x85, 0x89, 0x52, 0x24, 0x58, 0x80 };  // hollow pin, slashed
+#define GPS_FIX_CURRENT_MILLIS  5000   // fix counts as current if the last valid reading is this recent
+
 // Per-cell advance. Size 2 uses 11px instead of GFX's 12px (10px glyph + 1px gap),
 // so 11 chars fit the 128px width and "Angekommen?" stays on one line.
 static int cellW(int sz)  { return sz == 2 ? 11 : CHAR_W; }
@@ -544,9 +549,13 @@ int UITask::renderBattery() {
   return x;
 }
 
-// header: nickname left, battery icon right (BLE PIN only on boot and in pairing mode)
+// header: nickname left, GPS status + battery icon right (BLE PIN only on boot and in pairing mode)
 void UITask::renderHeader() {
-  int right = renderBattery() - CHAR_W;
+  int gps_x = renderBattery() - 4 - 8;
+  bool fix = _has_fix && millis() - _fix_millis < GPS_FIX_CURRENT_MILLIS;
+  _display->setColor(UIColor::title_txt);
+  _display->drawXbm(gps_x, 0, fix ? gps_fix_icon : gps_nofix_icon, 8, 8);
+  int right = gps_x - CHAR_W;
   renderText(0, 1, right, _node_prefs->node_name);
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 }

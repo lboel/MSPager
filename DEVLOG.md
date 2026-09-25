@@ -4,6 +4,14 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — GPS status icon in header
+
+**Request:** a status icon left of the battery: a location pin with a GPS fix, crossed out without one. The position must be checked periodically in the background.
+
+**Done:** 8×8 bitmaps (filled pin with hole / hollow pin with a diagonal slash) drawn by `renderHeader()` between the name and the battery. The background check already existed from M3 (`updateFix()`, every 1 s, independent of the display). New: a fix counts as **current** only if the last valid reading is < 5 s old (`GPS_FIX_CURRENT_MILLIS`), because `_has_fix` alone stays true after the first fix. The name budget drops to 14 characters.
+
+---
+
 ## 2026-09-25 — M3: Location built
 
 **Done**

@@ -126,6 +126,8 @@ All pagers flashed from the same checkout meet in the same channel right after f
 > To use existing MeshCore repeaters, they must run the same radio preset.
 
 ### 5.5 GPS first fix
+The header shows a **location pin** left of the battery when the pager has a GPS fix, and a **slashed pin** when it doesn't.
+
 - Take the pager **outdoors** with a clear view of the sky for **2–5 minutes** the first time.
 - Messages sent before the first fix carry `[no GPS]`. After that they carry the current or last known position.
 
