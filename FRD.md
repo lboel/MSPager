@@ -13,7 +13,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-005](frd/FRD-005-message-detail.md) | Message detail (nickname, distance/bearing, coords) | M3 | Proposed |
 | [FRD-006](frd/FRD-006-canned-messages.md) | Canned messages (compose + reply pickers) | M2 | Implemented |
 | [FRD-007](frd/FRD-007-replies-with-mention.md) | Replies with `@[Nick]` mention | M2 | Implemented |
-| [FRD-008](frd/FRD-008-pager-channel-selection.md) | Pager channel by name, auto-created with random key, others hidden | M2 | Implemented |
+| [FRD-008](frd/FRD-008-pager-channel-selection.md) | Pager channel by name (from `pager.ini`), others hidden | M2 | Implemented |
 | [FRD-009](frd/FRD-009-sender-nickname.md) | Sender nickname = MeshCore node name | M2 | Implemented |
 | [FRD-010](frd/FRD-010-gps-attachment.md) | GPS attachment (4 decimals ≈ 10 m, last fix + age) | M3 | Proposed |
 | [FRD-011](frd/FRD-011-gps-acquisition.md) | GPS acquisition (always on, last fix kept) | M3 | Proposed |
@@ -23,6 +23,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-015](frd/FRD-015-configuration-via-app.md) | Configuration via MeshCore app (BLE always on) | M2 | Implemented |
 | [FRD-016](frd/FRD-016-inbox-storage.md) | Inbox storage (RAM ring buffer, 16 msgs) | M2 | Implemented |
 | [FRD-017](frd/FRD-017-ble-pairing-mode.md) | BLE pairing mode (hold 10 s, big PIN, 30 s) | M2 | Implemented |
+| [FRD-018](frd/FRD-018-group-config-file.md) | Group config file `pager.ini` (channel name/key, EU radio) | M2 | Implemented |
 
 ## Adding an FRD
 1. Copy an existing file and take the next free number: `frd/FRD-NNN-<kebab-slug>.md`.

@@ -9,8 +9,7 @@
 ## Requirement
 1. All per-device configuration SHALL be done with the stock **MeshCore smartphone app over BLE**, using the unchanged companion protocol:
    - **Nickname** = node name
-   - **Radio preset** (frequency, BW, SF, CR, TX power), identical on all pagers
-   - **Pager channel**: pre-created by the firmware with a random key ([FRD-008](FRD-008-pager-channel-selection.md)). The group shares one pager's key to the others by QR code
+   - **Radio preset** and **pager channel** are **not** configured in the app. They come from `pager.ini` and are re-applied at every boot ([FRD-018](FRD-018-group-config-file.md)). App changes to them last until the next reboot. TX power remains app-configurable.
 2. **BLE SHALL always be on** and advertising.
 3. The BLE pairing PIN SHALL be shown on the boot screen and **always** in the chat header, next to the battery ([FRD-004](FRD-004-main-screen.md)).
 4. Configuration SHALL persist in flash across reboots.

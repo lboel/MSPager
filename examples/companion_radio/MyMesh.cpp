@@ -990,6 +990,13 @@ void MyMesh::begin(bool has_display) {
 #ifdef PAGER_CHANNEL_NAME
   ensurePagerChannel();
 #endif
+#ifdef PAGER_RADIO_FREQ
+  // radio settings from pager.ini, applied at every boot so all pagers can hear each other
+  _prefs.freq = PAGER_RADIO_FREQ;
+  _prefs.bw = PAGER_RADIO_BW;
+  _prefs.sf = PAGER_RADIO_SF;
+  _prefs.cr = PAGER_RADIO_CR;
+#endif
 
   radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
   radio_driver.setTxPower(_prefs.tx_power_dbm);
@@ -1001,31 +1008,56 @@ void MyMesh::begin(bool has_display) {
 }
 
 #ifdef PAGER_CHANNEL_NAME
-// Last match wins: a group key imported via the app lands after the auto-seeded channel.
 int MyMesh::findPagerChannel() {
   ChannelDetails ch;
-  int found = -1;
   for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
-    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) found = i;
+    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) return i;
   }
-  return found;
+  return -1;
 }
 
-// Seed the pager channel with a random 128-bit key so it shows up in the app.
-// The group then shares one key via the app (QR code) - see FRD-008.
-void MyMesh::ensurePagerChannel() {
-  if (findPagerChannel() >= 0) return;
+// Enforce the group channel from pager.ini at every boot (FRD-008): exactly one
+// channel named PAGER_CHANNEL_NAME, holding PAGER_CHANNEL_KEY. Duplicates are removed.
+static_assert(sizeof(PAGER_CHANNEL_KEY) == 33, "pager.ini: channel_key must be exactly 32 hex characters");
 
+void MyMesh::ensurePagerChannel() {
+  uint8_t key[16];
+  for (const char* p = PAGER_CHANNEL_KEY; *p; p++) {
+    if (!mesh::Utils::isHexChar(*p)) return;   // invalid key: leave channels untouched, UI shows "No channel"
+  }
+  mesh::Utils::fromHex(key, sizeof(key), PAGER_CHANNEL_KEY);
+
+  bool changed = false, found = false;
+  int free_slot = -1;
   ChannelDetails ch;
   for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
-    if (ch.name[0] == 0) {   // free slot
-      memset(&ch, 0, sizeof(ch));
-      StrHelper::strncpy(ch.name, PAGER_CHANNEL_NAME, sizeof(ch.name));
-      getRNG()->random(ch.channel.secret, 16);
-      if (setChannel(i, ch)) saveChannels();
-      return;
+    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) {
+      if (found) {                       // duplicate (e.g. an older QR import) -> free the slot
+        memset(&ch, 0, sizeof(ch));
+        setChannel(i, ch);
+        changed = true;
+      } else {
+        found = true;
+        static const uint8_t zeroes[16] = { 0 };
+        if (memcmp(ch.channel.secret, key, 16) != 0 || memcmp(&ch.channel.secret[16], zeroes, 16) != 0) {
+          memset(ch.channel.secret, 0, sizeof(ch.channel.secret));
+          memcpy(ch.channel.secret, key, 16);
+          setChannel(i, ch);
+          changed = true;
+        }
+      }
+    } else if (ch.name[0] == 0 && free_slot < 0) {
+      free_slot = i;
     }
   }
+  if (!found && free_slot >= 0) {
+    memset(&ch, 0, sizeof(ch));
+    StrHelper::strncpy(ch.name, PAGER_CHANNEL_NAME, sizeof(ch.name));
+    memcpy(ch.channel.secret, key, 16);
+    setChannel(free_slot, ch);
+    changed = true;
+  }
+  if (changed) saveChannels();
 }
 
 bool MyMesh::sendPagerMessage(const char* text) {

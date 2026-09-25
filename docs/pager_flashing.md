@@ -113,26 +113,17 @@ All pagers in a group need the **same radio preset** and the **same `Pager` chan
 - In the app settings, set the **node name** to the pager's nickname, e.g. `Anna`.
 - Keep it **≤ 10 characters**. Longer names get cut off on the small display.
 
-### 5.3 Radio preset
-- In the radio settings, choose the same preset on every pager. For Germany/EU: **EU/UK (Narrow)**, 869.618 MHz.
-- Make sure the preset matches any MeshCore repeaters you want to use.
+### 5.3 Radio preset & 5.4 Pager channel: automatic
+Nothing to do. Every pager applies the **group config** from [`pager.ini`](../pager.ini) at every boot:
+- channel **`Pager`** with the group key, visible in the app's channel list
+- radio preset **EU/UK (Narrow)**: 869.618 MHz, BW 62.5, SF 8, CR 5
 
-### 5.4 Pager channel
-Every pager creates a channel named **`Pager`** with its **own random key** on first boot. You'll see it in the app's channel list right away. For pagers to talk to each other, they all need the **same key**, so pick one pager's key as the group key:
+All pagers flashed from the same checkout meet in the same channel right after flashing. Changes made in the app to this channel or the radio settings are reset on the next reboot.
 
-**On the first pager (the "key master"):**
-1. Open the `Pager` channel in the app and show its **QR code / share key**.
-2. Keep that screen open (or save the QR code) for the other pagers.
+**Separate group or new key:** generate a new key with `openssl rand -hex 16`, put it into `channel_key` in `pager.ini`, commit, rebuild, and **reflash every pager**.
 
-**On every other pager:**
-1. **Delete** its auto-created `Pager` channel in the app.
-2. Add a channel by **scanning the first pager's QR code** (or entering the same name + key).
-3. Double-check that the name is exactly `Pager` (case-sensitive).
-
-> If you forget step 1, it still works: when two `Pager` channels exist, the pager sends on the one added last (the imported one). Deleting the old one avoids confusion.
-> If you delete `Pager` entirely, the pager creates a new one with a new random key on the next reboot.
-
-> The pager ignores the Public channel and all other channels. It only shows `Pager`.
+> Anyone who can read `pager.ini` can read the group's messages. Keep the repository private.
+> To use existing MeshCore repeaters, they must run the same radio preset.
 
 ### 5.5 GPS first fix
 - Take the pager **outdoors** with a clear view of the sky for **2–5 minutes** the first time.
@@ -175,8 +166,8 @@ Optional: a phone with the MeshCore app joined to the `Pager` channel sees the s
 
 | Symptom | Likely cause / fix |
 |---|---|
-| Display shows `No 'Pager' channel` | The channel was renamed or deleted. Reboot (RST) to auto-create a new one, then share the group key again (§5.4) |
-| Messages don't arrive | Different radio preset or channel key between pagers. Check §5.3/§5.4 on both |
+| Display shows `No 'Pager' channel` | The channel was renamed or deleted in the app. Press RST: it's restored from `pager.ini` |
+| Messages don't arrive | Pagers built from different `pager.ini` versions (different key/preset). Reflash all from the same commit. Also check that the nicknames differ (own nickname = shown as `me`, no alert) |
 | Only some messages arrive | Out of range. Add or position a MeshCore repeater, and check the antenna |
 | Always `[no GPS]` | GPS module not plugged in before power-on, or no fix yet. Go outdoors and wait a few minutes |
 | Position is old (`~45min`) | No current fix (indoors). It shows the last known position and its age |

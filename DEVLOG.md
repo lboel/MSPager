@@ -4,6 +4,27 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Group config file `pager.ini` (FRD-018) + EU radio defaults
+
+**Test feedback:** a message from one pager didn't arrive at the other. Cause: M2 gave every pager its own random channel key, and the keys were never shared by QR.
+
+**Request:** a git-tracked config file with the channel name and key that all flashed pagers follow. Also initialise the radio to EU standard settings.
+
+**Done:**
+- `pager.ini` (repo root, included via `extra_configs`): `channel_name`, `channel_key` (32 hex, freshly generated), `radio_freq/bw/sf/cr` = EU/UK Narrow 869.618 / 62.5 / 8 / 5.
+- `MyMesh::ensurePagerChannel()` now **enforces** it at every boot: exactly one channel with that name and key. The key is overwritten if different, and duplicates from earlier QR imports are removed.
+- The radio settings from `pager.ini` are applied at every boot (before `radio_driver.setParams`).
+- `findPagerChannel()` is back to first match (duplicates can no longer exist after boot).
+- A key length other than 32 fails the build (`static_assert`).
+
+**Decisions:**
+- **Reverses "random key per device"** (M2) in favour of zero-touch group setup. Trade-off: the key is in git and in every `.bin`, so the repo must stay private. Rotating the key means reflashing all pagers.
+- Hex instead of base64: `base64.hpp` has non-inline definitions and can only be included once (`BaseChatMesh.cpp`).
+- Settings are *enforced* rather than just defaulted, so a stray app edit can't split the group permanently.
+- CR 5 = MeshCore's default (`LORA_CR`). LoRa carries the CR in the packet header, so nodes on a different CR still decode each other.
+
+---
+
 ## 2026-09-25 — Bug: pager only briefly visible in the app → BLE pairing mode (FRD-017)
 
 **Report:** one of two flashed pagers is only visible in the MeshCore app shortly after boot. Pairing doesn't fail.
