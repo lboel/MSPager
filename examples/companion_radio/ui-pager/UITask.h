@@ -13,6 +13,7 @@
 
 #include "../AbstractUITask.h"
 #include "../NodePrefs.h"
+#include "PagerLocation.h"
 
 #ifndef PAGER_CHANNEL_NAME
   #error "ui-pager requires PAGER_CHANNEL_NAME (see env heltec_v4_pager)"
@@ -40,6 +41,7 @@ struct PagerMsg {
   bool own;
   bool unread;
   bool for_me;    // mentions this pager's nickname (FRD-007)
+  PagerPos pos;   // sender position from the message suffix (FRD-010)
 };
 
 class UITask : public AbstractUITask {
@@ -70,12 +72,27 @@ private:
   bool _pair_saw_idle;            // saw "not connected" after restart, so the next connect is new
 
   PagerMsg* msgAt(int idx);
-  PagerMsg* addMsg(const char* sender, const char* body, bool own);
+  PagerMsg* addMsg(const char* sender, const char* body, bool own, const PagerPos& pos);
+
+  // own GPS fix (FRD-011)
+  bool _has_fix;
+  long _fix_lat_e6, _fix_lon_e6;
+  unsigned long _fix_millis, _next_fix_check;
+  void updateFix();
+  PagerPos currentPos();
+
+  // automatic answer to "Standort?" (FRD-019)
+  unsigned long _auto_reply_at;
+  char _auto_reply_to[32];
+  void checkLocationRequest(const char* sender, const char* body);
+
+  void relText(char* dest, size_t dest_size, const PagerMsg* m);
+  void displayBody(char* dest, size_t dest_size, const PagerMsg* m);
 
   void handleShort();
   void handleLong();
   void handleDouble();
-  void sendCanned(const char* text, const char* mention_to);
+  void sendCanned(const char* text, const char* mention_to, const char* alert = "Sent");
   void markVisibleRead();
   void checkPairingHold();
   void startPairing();
@@ -105,6 +122,10 @@ public:
     : AbstractUITask(board, serial), _display(NULL), _sensors(NULL), _node_prefs(NULL) {
     _screen = Screen::BOOT;
     _next_refresh = _auto_off = _boot_until = _next_batt_chck = 0;
+    _has_fix = false;
+    _fix_lat_e6 = _fix_lon_e6 = 0;
+    _fix_millis = _next_fix_check = _auto_reply_at = 0;
+    _auto_reply_to[0] = 0;
     _alert_expiry = 0;
     _inbox_head = _inbox_count = 0;
     _sel = -1;

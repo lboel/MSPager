@@ -21,9 +21,12 @@
 #define HINT_SEP_Y    53    // separator above the button hint
 #define HINT_Y        56
 
-// canned message catalogue (FRD-006)
-static const char* const COMPOSE_OPTIONS[] = { "Angekommen?", "Brauche Hilfe" };
-static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93\x9E" };  // last: U+1F4DE
+// canned message catalogue (FRD-006). Location messages: FRD-019
+#define LOC_REQUEST  "Standort?"       // other pagers answer automatically with LOC_SHARE
+#define LOC_SHARE    "Mein Standort"   // shown with distance/bearing on the receiving pager
+static const char* const COMPOSE_OPTIONS[] = { "Angekommen?", "Brauche Hilfe", LOC_REQUEST, LOC_SHARE };
+static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93\x9E", LOC_REQUEST, LOC_SHARE };  // 4th: U+1F4DE
+#define PICKER_ROWS  4
 #define NUM_COMPOSE  (int)(sizeof(COMPOSE_OPTIONS) / sizeof(COMPOSE_OPTIONS[0]))
 #define NUM_REPLY    (int)(sizeof(REPLY_OPTIONS) / sizeof(REPLY_OPTIONS[0]))
 
@@ -85,7 +88,7 @@ PagerMsg* UITask::msgAt(int idx) {
   return &_inbox[(start + idx) % PAGER_INBOX_SIZE];
 }
 
-PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own) {
+PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own, const PagerPos& pos) {
   PagerMsg* m = &_inbox[_inbox_head];
   _inbox_head = (_inbox_head + 1) % PAGER_INBOX_SIZE;
   if (_inbox_count < PAGER_INBOX_SIZE) {
@@ -98,6 +101,7 @@ PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own) {
   m->rx_millis = millis();
   m->own = own;
   m->unread = !own;
+  m->pos = pos;
 
   char mention[40];
   snprintf(mention, sizeof(mention), "@[%s] ", _node_prefs->node_name);
@@ -129,22 +133,26 @@ void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, i
   // MyMesh only forwards pager-channel texts here (FRD-008). They arrive as "<sender>: <body>" (FRD-009).
   const char* sep = strstr(text, ": ");
   char sender[32];
-  const char* body = text;
+  char body[MAX_TEXT_LEN + 1];
   if (sep && sep - text < (int)sizeof(sender)) {
     snprintf(sender, sizeof(sender), "%.*s", (int)(sep - text), text);
-    body = sep + 2;
+    snprintf(body, sizeof(body), "%s", sep + 2);
   } else {
     snprintf(sender, sizeof(sender), "?");
+    snprintf(body, sizeof(body), "%s", text);
   }
+  PagerPos pos;
+  parsePosSuffix(body, pos);   // FRD-010/012: strip "[lat,lon]" into pos
 
   // own messages (sent from the app over BLE) are shown as "me" and don't alert
   if (strcmp(sender, _node_prefs->node_name) == 0) {
-    addMsg("me", body, true);
+    addMsg("me", body, true, pos);
     _next_refresh = 0;
     return;
   }
 
-  addMsg(sender, body, false);
+  addMsg(sender, body, false, pos);
+  checkLocationRequest(sender, body);
   if (_screen == Screen::CHAT || _screen == Screen::BOOT) {
     setScreen(Screen::CHAT);
   }
@@ -282,18 +290,92 @@ void UITask::handleDouble() {
   }
 }
 
-void UITask::sendCanned(const char* text, const char* mention_to) {
+void UITask::sendCanned(const char* text, const char* mention_to, const char* alert) {
   char body[MAX_TEXT_LEN + 1];
   if (mention_to) {
     snprintf(body, sizeof(body), "@[%s] %s", mention_to, text);
   } else {
     snprintf(body, sizeof(body), "%s", text);
   }
-  if (the_mesh.sendPagerMessage(body)) {
-    addMsg("me", body, true);
-    showAlert("Sent", 1000);
+  // every message carries the own position (FRD-010)
+  PagerPos pos = currentPos();
+  char suffix[48];
+  formatPosSuffix(suffix, sizeof(suffix), pos);
+  char wire[MAX_TEXT_LEN + 1];
+  snprintf(wire, sizeof(wire), "%s%s", body, suffix);
+
+  if (the_mesh.sendPagerMessage(wire)) {
+    addMsg("me", body, true, pos);
+    showAlert(alert, 1000);
   } else {
     showAlert("Send failed", 1500);
+  }
+}
+
+// ---------------------------------------------------------------- location (FRD-010/011/019)
+
+void UITask::updateFix() {
+  if (millis() < _next_fix_check) return;
+  _next_fix_check = millis() + 1000;
+  LocationProvider* loc = _sensors ? _sensors->getLocationProvider() : NULL;
+  if (loc && loc->isValid()) {
+    _fix_lat_e6 = loc->getLatitude();
+    _fix_lon_e6 = loc->getLongitude();
+    _fix_millis = millis();
+    _has_fix = true;
+  }
+}
+
+// own position for a message: last fix + its age, or unknown
+PagerPos UITask::currentPos() {
+  PagerPos pos;
+  memset(&pos, 0, sizeof(pos));
+  if (_has_fix) {
+    pos.known = true;
+    pos.lat_e6 = _fix_lat_e6;
+    pos.lon_e6 = _fix_lon_e6;
+    pos.age_secs = (millis() - _fix_millis) / 1000;
+  }
+  return pos;
+}
+
+// "Standort?" to the group, or "@[<me>] Standort?": answer with LOC_SHARE after a random
+// delay, so several pagers answering the same request don't collide on air.
+void UITask::checkLocationRequest(const char* sender, const char* body) {
+  char mention[40];
+  snprintf(mention, sizeof(mention), "@[%s] ", _node_prefs->node_name);
+  const char* rest = body;
+  if (strncmp(body, mention, strlen(mention)) == 0) {
+    rest = body + strlen(mention);
+  } else if (body[0] == '@' && body[1] == '[') {
+    return;                 // addressed to someone else
+  }
+  if (strcmp(rest, LOC_REQUEST) != 0) return;
+
+  snprintf(_auto_reply_to, sizeof(_auto_reply_to), "%s", sender);
+  _auto_reply_at = millis() + the_mesh.getRNG()->nextInt(500, 4000);
+}
+
+// relative position of a message's sender: "1.2km NE", "~340m S" (stale fix), or why it's unknown
+void UITask::relText(char* dest, size_t dest_size, const PagerMsg* m) {
+  if (m->own)            { snprintf(dest, dest_size, "you"); return; }
+  if (!m->pos.known)     { snprintf(dest, dest_size, m->pos.no_gps ? "no GPS" : "no position"); return; }
+  if (!_has_fix)         { snprintf(dest, dest_size, "no own GPS"); return; }
+  double dist, bearing;
+  distanceBearing(_fix_lat_e6, _fix_lon_e6, m->pos.lat_e6, m->pos.lon_e6, dist, bearing);
+  char tmp[20];
+  formatDistance(tmp, sizeof(tmp), dist, bearing);
+  snprintf(dest, dest_size, "%s%s", m->pos.age_secs > PAGER_FIX_FRESH_SECS ? "~" : "", tmp);
+}
+
+// body as shown in the chat list; location shares get distance/bearing appended
+void UITask::displayBody(char* dest, size_t dest_size, const PagerMsg* m) {
+  compactMention(dest, dest_size, m->body);
+  size_t len = strlen(dest), n = strlen(LOC_SHARE);
+  if (!m->own && m->pos.known && len >= n && strcmp(dest + len - n, LOC_SHARE) == 0) {
+    char rel[24];
+    relText(rel, sizeof(rel), m);
+    snprintf(dest + len, dest_size - len, " %s", rel);
   }
 }
 
@@ -522,8 +604,8 @@ void UITask::renderChat() {
 // one small chat line: "[markers]<sender>: <body>"
 void UITask::renderChatLine(int idx, int y) {
   PagerMsg* m = msgAt(idx);
-  char body[MAX_TEXT_LEN + 1];
-  compactMention(body, sizeof(body), m->body);
+  char body[MAX_TEXT_LEN + 40];
+  displayBody(body, sizeof(body), m);
   char line[MAX_TEXT_LEN + 40];
   snprintf(line, sizeof(line), "%s: %s", m->sender, body);
 
@@ -546,8 +628,8 @@ void UITask::renderChatLine(int idx, int y) {
 // with the sender (small) and the body at double size, then newer lines as space allows.
 void UITask::renderChatSelected() {
   PagerMsg* m = msgAt(_sel);
-  char body[MAX_TEXT_LEN + 1];
-  compactMention(body, sizeof(body), m->body);
+  char body[MAX_TEXT_LEN + 40];
+  displayBody(body, sizeof(body), m);
   int lines = renderWrapped(0, 0, _display->width() - 2, body, 2, 2, false);
   int block_h = LINE_H + lines * 16;   // sender row + body rows (size-2 glyphs leave 2 blank rows at the bottom)
 
@@ -578,25 +660,42 @@ void UITask::renderChatSelected() {
   }
 }
 
+// Detail (FRD-005): title = sender + relative position, body at double size,
+// then absolute coordinates + message age.
 void UITask::renderDetail() {
   PagerMsg* m = msgAt(_sel);
   if (m == NULL) { setScreen(Screen::CHAT); return; }
 
-  // title bar: sender left, age right
-  char age[24];
-  formatAge(age, sizeof(age), m->rx_millis);
-  int age_w = textWidth(age);
+  char rel[24];
+  relText(rel, sizeof(rel), m);
+  int rel_w = textWidth(rel);
   _display->setColor(UIColor::title_txt);
   _display->fillRect(0, 0, _display->width(), 10);
   _display->setColor(UIColor::window_bkg);
-  renderText(2, 1, _display->width() - age_w - 8, m->sender);
-  renderText(_display->width() - age_w - 2, 1, age_w, age);
+  renderText(2, 1, _display->width() - rel_w - 8, m->sender);
+  renderText(_display->width() - rel_w - 2, 1, rel_w, rel);
 
-  // message body at double size (FRD-005), up to 2 lines
   _display->setColor(UIColor::primary_txt);
-  renderWrapped(0, 13, _display->width(), m->body, 2, 2, true);
+  renderWrapped(0, 12, _display->width(), m->body, 2, 2, true);
 
-  renderText(0, 45, _display->width(), "Position: unknown");   // M3: FRD-005/010
+  char coords[32], age[16];
+  const PagerPos& pos = m->pos;
+  if (pos.known) {
+    char lat[16], lon[16];
+    formatCoord(lat, sizeof(lat), pos.lat_e6);
+    formatCoord(lon, sizeof(lon), pos.lon_e6);
+    snprintf(coords, sizeof(coords), "%s,%s", lat, lon);
+  } else {
+    snprintf(coords, sizeof(coords), "%s", pos.no_gps ? "no GPS fix" : "no position");
+  }
+  unsigned long secs = (millis() - m->rx_millis) / 1000;
+  if (secs < 60)        snprintf(age, sizeof(age), "now");
+  else if (secs < 3600) snprintf(age, sizeof(age), "%lumin", secs / 60);
+  else                  snprintf(age, sizeof(age), "%luh", secs / 3600);
+  int age_w = textWidth(age);
+  renderText(0, 45, _display->width() - age_w - CHAR_W, coords);
+  renderText(_display->width() - age_w, 45, age_w, age);
+
   renderHint("Hold:reply  2x:back");
 }
 
@@ -604,20 +703,25 @@ void UITask::renderPicker(bool reply) {
   const char* const* opts = reply ? REPLY_OPTIONS : COMPOSE_OPTIONS;
   int n = reply ? NUM_REPLY : NUM_COMPOSE;
 
-  char title[48];
+  char title[48], count[8];
   if (reply) {
     PagerMsg* m = msgAt(_sel);
     snprintf(title, sizeof(title), "Reply to %s", m ? (m->own ? "me" : m->sender) : "?");
   } else {
     snprintf(title, sizeof(title), "Send to group");
   }
+  snprintf(count, sizeof(count), "%d/%d", _option + 1, n);
+  int count_w = textWidth(count);
   _display->setColor(UIColor::title_txt);
   _display->fillRect(0, 0, _display->width(), 10);
   _display->setColor(UIColor::window_bkg);
-  renderText(2, 1, _display->width() - 4, title);
+  renderText(2, 1, _display->width() - count_w - 8, title);
+  renderText(_display->width() - count_w - 2, 1, count_w, count);
 
-  for (int i = 0; i < n; i++) {
-    int y = 13 + i * 10;
+  // PICKER_ROWS visible, scrolled to keep the current option on screen
+  int first = _option >= PICKER_ROWS ? _option - PICKER_ROWS + 1 : 0;
+  for (int i = first; i < n && i < first + PICKER_ROWS; i++) {
+    int y = 13 + (i - first) * 10;
     if (i == _option) {
       _display->setColor(UIColor::title_txt);
       _display->fillRect(0, y - 1, _display->width(), 10);
@@ -635,6 +739,12 @@ void UITask::renderPicker(bool reply) {
 
 void UITask::loop() {
   checkPairingHold();
+  updateFix();
+
+  if (_auto_reply_at && millis() >= _auto_reply_at) {
+    _auto_reply_at = 0;
+    sendCanned(LOC_SHARE, _auto_reply_to, "Location shared");   // visible in own chat (FRD-019)
+  }
 
   int ev = user_btn.check();
   if (ev == BUTTON_EVENT_CLICK || ev == BUTTON_EVENT_LONG_PRESS || ev == BUTTON_EVENT_DOUBLE_CLICK) {

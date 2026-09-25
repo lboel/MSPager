@@ -990,6 +990,11 @@ void MyMesh::begin(bool has_display) {
 #ifdef PAGER_CHANNEL_NAME
   ensurePagerChannel();
 #endif
+#ifdef PAGER_CHANNEL_NAME
+  // GPS always on for position suffixes (FRD-011); applied by applyGpsPrefs() in main
+  _prefs.gps_enabled = 1;
+  _prefs.gps_interval = 0;
+#endif
 #ifdef PAGER_RADIO_FREQ
   // radio settings from pager.ini, applied at every boot so all pagers can hear each other
   _prefs.freq = PAGER_RADIO_FREQ;
