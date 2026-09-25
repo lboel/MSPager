@@ -10,7 +10,7 @@
 1. The main screen SHALL show, **at the same time**:
    - a **battery indicator** (icon + percentage) in the header row, right-aligned, and
    - the **chat room**: the latest pager-channel messages, newest at the bottom.
-2. No other status information (GPS, BLE, node name, unread count) SHALL be shown on this screen.
+2. No other status information (GPS, BLE, node name, unread count) SHALL be shown on this screen, with one exception: until the MeshCore app has connected **once since boot**, the **BLE PIN** SHALL be shown top left in the header (`PIN 123456`). After the first connection it disappears until the next reset/reboot.
 3. Each message SHALL take one line in the form `<sender>: <text>`:
    - `<sender>` is the nickname ([FRD-009](FRD-009-sender-nickname.md)). Own messages show the sender as `me`.
    - `<text>` is the canned message without the position suffix. Mentions are shown compactly as `@Anna Ja`.
@@ -22,7 +22,7 @@
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
-row 0 |                 ▮▮▮ 87%|   header: battery only
+row 0 |PIN 123456        87% ▮▮▮|   header: BLE PIN (until first app connection) + battery
 row 1 |────────────────────────|   separator line
 rows 2–7 (6 message lines, oldest at top, newest at bottom):
       |Anna: Angekommen?       |

@@ -54,6 +54,7 @@ private:
   int _inbox_head, _inbox_count;
   int _sel;       // selected message index (chronological), -1 = none
   int _option;    // current option in compose/reply picker
+  bool _ble_seen; // an app has connected since boot -> stop showing the BLE PIN
 
   PagerMsg* msgAt(int idx);
   PagerMsg* addMsg(const char* sender, const char* body, bool own);
@@ -86,6 +87,7 @@ public:
     _inbox_head = _inbox_count = 0;
     _sel = -1;
     _option = 0;
+    _ble_seen = false;
   }
 
   void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);

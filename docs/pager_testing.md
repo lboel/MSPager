@@ -83,6 +83,11 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 15b. With the app connected to A: send `Angekommen?` from **A's button UI**. The app shows it in `Pager` as `Anna: Angekommen?` (listed as coming from `Anna`, not as your own bubble).
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
+### BLE PIN in header (FRD-004)
+- [ ] 16b. After boot, the chat header shows `PIN nnnnnn` top left (same PIN as the boot screen).
+- [ ] 16c. Connect the MeshCore app: the PIN disappears from the header right away and stays gone after disconnecting.
+- [ ] 16d. Press RST: after boot the PIN is back in the header.
+
 ### Robustness
 - [ ] 17. In the app, rename A's `Pager` channel to something else. A's chat (with no messages) shows `No 'Pager' channel`, and hold → popup `No 'Pager' channel`, nothing sent.
 - [ ] 18. Reboot A: a new `Pager` channel with a **new** key is created (share the group key again per §5.4).

@@ -4,6 +4,14 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Feature: BLE PIN in chat header
+
+**Request:** show the Bluetooth connection code top left until a connection happens after boot, and again after every reset.
+
+**Done:** the chat header shows `PIN <pin>` top left until `hasConnection()` is true for the first time since boot (`UITask::_ble_seen`, RAM only, so it resets with every reboot). It fits next to the battery (0–59 px vs. 78+ px). FRD-004 and FRD-015 are updated, and the M2 checklist has steps 16b–16d.
+
+---
+
 ## 2026-09-25 — M2 fix: pager-sent messages visible in the app
 
 **Test feedback:** a message sent from the pager's button didn't show up in the app connected to that pager.

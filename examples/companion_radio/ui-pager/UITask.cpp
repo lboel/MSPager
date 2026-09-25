@@ -360,6 +360,13 @@ void UITask::renderBoot() {
 
 void UITask::renderChat() {
   renderBattery();
+  if (!_ble_seen && the_mesh.getBLEPin() != 0) {   // BLE PIN top left until the first app connection
+    char tmp[16];
+    snprintf(tmp, sizeof(tmp), "PIN %lu", (unsigned long)the_mesh.getBLEPin());
+    _display->setColor(UIColor::title_txt);
+    _display->setCursor(0, 1);
+    _display->print(tmp);
+  }
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 
   if (_inbox_count == 0) {
@@ -478,6 +485,11 @@ void UITask::loop() {
       else handleDouble();
       if (_display != NULL && _display->isOn()) wake();   // restart timeout, refresh
     }
+  }
+
+  if (!_ble_seen && hasConnection()) {
+    _ble_seen = true;
+    _next_refresh = 0;
   }
 
   if (_screen == Screen::BOOT && millis() >= _boot_until) {
