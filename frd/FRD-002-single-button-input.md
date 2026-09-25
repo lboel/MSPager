@@ -18,7 +18,7 @@ Only **PRG (GPIO 0)** is readable by firmware. **RST** is hard-wired to the ESP3
    | **Long** | press held ≥ 1000 ms (fires once, on threshold) | *select / send / confirm* |
    | **Double** | two short presses within the multi-click window | *back / cancel* |
 
-2. Triple-click and other gestures SHALL be ignored.
+2. Triple-click SHALL be ignored. A **hold ≥ 10 s** is the one extra gesture (BLE pairing mode, FRD-017).
 3. The first press while the display is off only wakes it ([FRD-003](FRD-003-display-power.md)). A long press that wakes the display SHALL NOT trigger a send.
 4. The screen-specific mapping is defined in the state table below.
 
@@ -32,6 +32,9 @@ Only **PRG (GPIO 0)** is readable by firmware. **RST** is hard-wired to the ESP3
 | Message detail | — | open **Reply** picker for this message | back to Chat |
 | Compose picker | next option (wraps) | **send** selected option → Chat | cancel → Chat |
 | Reply picker | next option (wraps) | **send** reply → Chat | cancel → Message detail |
+| BLE pairing ([FRD-017](FRD-017-ble-pairing-mode.md)) | cancel → Chat | — | cancel → Chat |
+
+**Hold ≥ 10 s** (any screen, display on or off) enters BLE pairing mode ([FRD-017](FRD-017-ble-pairing-mode.md)). The 1 s long press fires first on the way there.
 
 ## Acceptance criteria
 - Every row of the state table can be reached and behaves as specified on a real device.

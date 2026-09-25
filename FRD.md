@@ -22,6 +22,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-014](frd/FRD-014-new-message-alert.md) | New-message alert (display wake + LED blink) | M4 | Proposed |
 | [FRD-015](frd/FRD-015-configuration-via-app.md) | Configuration via MeshCore app (BLE always on) | M2 | Implemented |
 | [FRD-016](frd/FRD-016-inbox-storage.md) | Inbox storage (RAM ring buffer, 16 msgs) | M2 | Implemented |
+| [FRD-017](frd/FRD-017-ble-pairing-mode.md) | BLE pairing mode (hold 10 s, big PIN, 30 s) | M2 | Implemented |
 
 ## Adding an FRD
 1. Copy an existing file and take the next free number: `frd/FRD-NNN-<kebab-slug>.md`.

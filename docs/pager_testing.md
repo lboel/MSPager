@@ -88,6 +88,14 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 16c. It stays like that while and after the app is connected.
 - [ ] 16d. Set a 10-character name (e.g. `Alexandria`): it's shown in full. With 12 characters it gets cut off with `...`.
 
+### BLE pairing mode (FRD-017)
+- [ ] 16e. With the app connected: on the chat screen, **hold PRG 10 s**. The app disconnects, and the screen shows "Bluetooth pairing", the PIN in large digits, the name and a 30 s countdown.
+- [ ] 16f. Connect the app (enter the PIN if asked): the popup `Connected` appears, then chat.
+- [ ] 16g. Enter pairing mode, don't connect: after 30 s the popup `Pairing timeout` appears, and the app can still find and connect to the pager afterwards.
+- [ ] 16h. Enter pairing mode, short press: cancelled, back to chat.
+- [ ] 16i. Display off → hold 10 s: the display wakes at 1 s and pairing mode opens at 10 s.
+- [ ] 16j. Reproduce the bug: the pager is invisible in the app scan after a while → hold 10 s → it appears in the scan.
+
 ### Robustness
 - [ ] 17. In the app, rename A's `Pager` channel to something else. A's chat (with no messages) shows `No 'Pager' channel`, and hold → popup `No 'Pager' channel`, nothing sent.
 - [ ] 18. Reboot A: a new `Pager` channel with a **new** key is created (share the group key again per §5.4).

@@ -4,6 +4,22 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Bug: pager only briefly visible in the app → BLE pairing mode (FRD-017)
+
+**Report:** one of two flashed pagers is only visible in the MeshCore app shortly after boot. Pairing doesn't fail.
+
+**Analysis:** `SerialBLEInterface` (ESP32) stops advertising while a peer is connected and only restarts once `getConnectedCount() == 0`. A phone holding a background link (the app auto-reconnect, or a second phone) makes the pager invisible. This is most likely what happened here. The firmware itself isn't broken.
+
+**Fix (as proposed by the user):** hold PRG ≥ 10 s → pairing mode:
+- BLE is disabled (drops the current link) and re-enabled 0.5 s later (advertising restarts).
+- The PIN is shown in size-3 digits with a 30 s countdown.
+- It ends on a new authenticated connection (`Connected`), a timeout (`Pairing timeout`) or a press (cancel).
+- The 10 s hold is tracked in `UITask::checkPairingHold()` because `MomentaryButton` only reports the 1 s long press.
+
+**Caveat:** the 1 s long press still fires first, so a hold started on a picker sends at 1 s. Documented: start from chat or with the display off. Bonds are not cleared.
+
+---
+
 ## 2026-09-25 — Change: battery as percentage, no icon
 
 **Request:** show the percentage, not the battery symbol.

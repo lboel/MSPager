@@ -172,6 +172,9 @@ void UITask::showAlert(const char* text, int duration_millis) {
 
 void UITask::handleShort() {
   switch (_screen) {
+    case Screen::PAIRING:
+      endPairing(NULL);
+      break;
     case Screen::BOOT:
       setScreen(Screen::CHAT);
       break;
@@ -197,6 +200,8 @@ void UITask::handleShort() {
 
 void UITask::handleLong() {
   switch (_screen) {
+    case Screen::PAIRING:
+      break;
     case Screen::BOOT:
       if (millis() < 8000) {
         the_mesh.enterCLIRescue();   // keep companion's rescue CLI as recovery path
@@ -239,6 +244,9 @@ void UITask::handleLong() {
 
 void UITask::handleDouble() {
   switch (_screen) {
+    case Screen::PAIRING:
+      endPairing(NULL);
+      break;
     case Screen::BOOT:
       setScreen(Screen::CHAT);
       break;
@@ -272,6 +280,64 @@ void UITask::sendCanned(const char* text, const char* mention_to) {
   } else {
     showAlert("Send failed", 1500);
   }
+}
+
+// ---------------------------------------------------------------- BLE pairing mode (FRD-017)
+
+// MomentaryButton only reports the 1s long press, so the 10s hold is tracked here.
+void UITask::checkPairingHold() {
+  if (!user_btn.isPressed()) {
+    _hold_start = 0;
+    _hold_fired = false;
+    return;
+  }
+  if (_hold_start == 0) {
+    _hold_start = millis();
+  } else if (!_hold_fired && millis() - _hold_start >= PAGER_PAIRING_HOLD_MILLIS) {
+    _hold_fired = true;
+    startPairing();
+  }
+}
+
+// ESP32 BLE stops advertising while any peer holds a connection, so a phone that
+// grabbed the link in the background makes the pager invisible to the app.
+// Drop that link, then advertise again.
+void UITask::startPairing() {
+  disableBluetooth();   // stops advertising, disconnects the current peer
+  _pair_reenable_at = millis() + 500;
+  _pair_saw_idle = false;
+  _pair_until = millis() + PAGER_PAIRING_SECS * 1000UL;
+  setScreen(Screen::PAIRING);
+  wake();
+}
+
+void UITask::endPairing(const char* alert) {
+  if (_pair_reenable_at) {   // ended before BLE was restarted
+    enableBluetooth();
+    _pair_reenable_at = 0;
+  }
+  _pair_until = 0;
+  _sel = -1;
+  setScreen(Screen::CHAT);
+  if (alert) showAlert(alert, 1500);
+}
+
+void UITask::renderPairing() {
+  _display->setColor(UIColor::title_txt);
+  _display->drawTextCentered(_display->width() / 2, 0, "Bluetooth pairing");
+  _display->fillRect(0, 10, _display->width(), 1);
+
+  char tmp[24];
+  snprintf(tmp, sizeof(tmp), "%lu", (unsigned long)the_mesh.getBLEPin());
+  _display->setTextSize(3);   // 18x24 px per char, 6 digits = 108 px
+  _display->drawTextCentered(_display->width() / 2, 18, tmp);
+  _display->setTextSize(1);
+
+  long left = (long)(_pair_until - millis()) / 1000;
+  if (left < 0) left = 0;
+  snprintf(tmp, sizeof(tmp), "%s  %lds", _node_prefs->node_name, left);
+  _display->drawTextCentered(_display->width() / 2, 48, tmp);
+  _display->drawTextCentered(_display->width() / 2, 56, "press: cancel");
 }
 
 // ---------------------------------------------------------------- rendering
@@ -484,6 +550,8 @@ void UITask::renderPicker(bool reply) {
 // ---------------------------------------------------------------- loop
 
 void UITask::loop() {
+  checkPairingHold();
+
   int ev = user_btn.check();
   if (ev == BUTTON_EVENT_CLICK || ev == BUTTON_EVENT_LONG_PRESS || ev == BUTTON_EVENT_DOUBLE_CLICK) {
     if (_display != NULL && !_display->isOn()) {
@@ -493,6 +561,26 @@ void UITask::loop() {
       else if (ev == BUTTON_EVENT_LONG_PRESS) handleLong();
       else handleDouble();
       if (_display != NULL && _display->isOn()) wake();   // restart timeout, refresh
+    }
+  }
+
+  if (_screen == Screen::PAIRING) {
+    if (_pair_reenable_at && millis() >= _pair_reenable_at) {
+      enableBluetooth();   // advertise again
+      _pair_reenable_at = 0;
+    } else if (!_pair_reenable_at) {
+      if (!hasConnection()) {
+        _pair_saw_idle = true;
+      } else if (_pair_saw_idle) {
+        endPairing("Connected");
+      }
+    }
+    if (_screen == Screen::PAIRING) {
+      if (millis() >= _pair_until) {
+        endPairing("Pairing timeout");
+      } else {
+        _auto_off = millis() + AUTO_OFF_MILLIS;   // keep display on while pairing
+      }
     }
   }
 
@@ -510,6 +598,7 @@ void UITask::loop() {
         case Screen::DETAIL:  renderDetail(); break;
         case Screen::COMPOSE: renderPicker(false); break;
         case Screen::REPLY:   renderPicker(true); break;
+        case Screen::PAIRING: renderPairing(); break;
       }
       if (millis() < _alert_expiry) {
         int y = _display->height() / 3;

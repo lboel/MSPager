@@ -154,6 +154,7 @@ Disconnect the app (Bluetooth stays on, and the app can reconnect any time). Pre
 | Reply "Ja" / "Nein" / "OK" / 📞 | In the message details: **hold** → **short press** to choose → **hold** to send |
 | Go back / cancel | **Double press** |
 | Turn the display off | **Double press** on the main screen, or wait 15 s |
+| Pair with the app (pager not found in the app) | From the main screen, **hold PRG for 10 s**. The large PIN appears for 30 s, so connect the app now |
 
 New message: the display lights up and the **LED blinks** until you've seen it. It blinks faster for "Brauche Hilfe" and for replies addressed to you.
 
@@ -179,6 +180,7 @@ Optional: a phone with the MeshCore app joined to the `Pager` channel sees the s
 | Only some messages arrive | Out of range. Add or position a MeshCore repeater, and check the antenna |
 | Always `[no GPS]` | GPS module not plugged in before power-on, or no fix yet. Go outdoors and wait a few minutes |
 | Position is old (`~45min`) | No current fix (indoors). It shows the last known position and its age |
+| Pager only visible in the app shortly after boot | Something else holds its Bluetooth link (the app reconnecting in the background, another phone), and the pager stops advertising while connected. **Hold PRG 10 s** (pairing mode) to drop that link and advertise again. Close the MeshCore app on other phones |
 | Can't connect with the app | Remove the old Bluetooth pairing in the phone's settings and reconnect. After a merged flash, a re-pair is always needed |
 | Flashing hangs at "Connecting…" | Use bootloader mode (§2) and a different USB cable |
 | Pager behaves oddly after an update | Do a full reinstall: **Erase Flash** + merged image (§4), then repeat §5 |

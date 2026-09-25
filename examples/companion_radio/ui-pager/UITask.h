@@ -22,6 +22,13 @@
   #define PAGER_DISPLAY_TIMEOUT_SECS  15
 #endif
 
+#ifndef PAGER_PAIRING_HOLD_MILLIS
+  #define PAGER_PAIRING_HOLD_MILLIS  10000   // hold PRG this long to enter BLE pairing mode (FRD-017)
+#endif
+#ifndef PAGER_PAIRING_SECS
+  #define PAGER_PAIRING_SECS  30
+#endif
+
 #ifndef PAGER_INBOX_SIZE
   #define PAGER_INBOX_SIZE  16
 #endif
@@ -37,7 +44,7 @@ struct PagerMsg {
 
 class UITask : public AbstractUITask {
 public:
-  enum class Screen { BOOT, CHAT, DETAIL, COMPOSE, REPLY };
+  enum class Screen { BOOT, CHAT, DETAIL, COMPOSE, REPLY, PAIRING };
 
 private:
   DisplayDriver* _display;
@@ -55,6 +62,13 @@ private:
   int _sel;       // selected message index (chronological), -1 = none
   int _option;    // current option in compose/reply picker
 
+  // BLE pairing mode (FRD-017)
+  unsigned long _hold_start;      // PRG press start, 0 = released
+  bool _hold_fired;               // pairing already triggered by this hold
+  unsigned long _pair_until;      // pairing mode timeout
+  unsigned long _pair_reenable_at;  // BLE restart after dropping the old link, 0 = done
+  bool _pair_saw_idle;            // saw "not connected" after restart, so the next connect is new
+
   PagerMsg* msgAt(int idx);
   PagerMsg* addMsg(const char* sender, const char* body, bool own);
 
@@ -63,6 +77,9 @@ private:
   void handleDouble();
   void sendCanned(const char* text, const char* mention_to);
   void markVisibleRead();
+  void checkPairingHold();
+  void startPairing();
+  void endPairing(const char* alert);
 
   void setScreen(Screen s);
   void wake();
@@ -73,6 +90,7 @@ private:
   void renderChat();
   void renderDetail();
   void renderPicker(bool reply);
+  void renderPairing();
   int  renderBattery();
   void renderHeader();
   void renderText(int x, int y, int max_w, const char* str);
@@ -87,6 +105,8 @@ public:
     _inbox_head = _inbox_count = 0;
     _sel = -1;
     _option = 0;
+    _hold_start = _pair_until = _pair_reenable_at = 0;
+    _hold_fired = _pair_saw_idle = false;
   }
 
   void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);
