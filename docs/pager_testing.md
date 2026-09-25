@@ -85,15 +85,15 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
 ### Large text (FRD-004, FRD-005)
-- [ ] 16k. Select a message: it's shown as an inverted block with the sender small and the text at **double size**. The older message is visible above it, and newer ones below if there's room.
-- [ ] 16l. `Angekommen?` fits on **one** large line. `Brauche Hilfe` wraps to two (`Brauche` / `Hilfe`).
+- [ ] 16k. Select a message: it's shown as an inverted block with the sender small and the text at **double size on one line**. The older message is visible above it and one newer message below.
+- [ ] 16l. `Angekommen?` fits and stays still. `Brauche Hilfe` and `@Anna Mein Standort 1.2km NE` **scroll slowly left**: pause, scroll to the end, pause, jump back. It restarts when you select another message.
 - [ ] 16m. A selected `📞` reply shows a **large** handset icon.
 - [ ] 16n. Step through all messages with short presses: the block moves, and nothing overlaps or runs off the bottom (also for the oldest and newest message).
-- [ ] 16o. Open the detail view: the sender is left and the age right in the title bar, and the message is at double size.
+- [ ] 16o. Open the detail view: the message is at double size on one line, and long text scrolls the same way.
 
 ### Button hints (FRD-004)
 - [ ] 16p. Every screen shows its hint in the bottom row below a line: chat (3 variants per FRD-004), detail `Hold:reply  2x:back`, pickers `Hold:send  2x:cancel`, pairing `Tap:cancel`.
-- [ ] 16q. No text overlaps the hint row (check a selected 2-line message such as `Brauche Hilfe`, and the detail view).
+- [ ] 16q. No text overlaps the hint row (check a selected message with an older and a newer neighbour, and the detail view).
 
 ### Header: name + battery icon (FRD-004)
 - [ ] 16b. The chat header shows only the nickname (left) and a battery icon (right). No PIN and no percentage.

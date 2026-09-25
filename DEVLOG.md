@@ -4,6 +4,19 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Marquee scrolling for long text, single-line selection
+
+**Request:** long text was only ellipsized. Add slow horizontal scrolling for the selected message (overview) and the detail message. Limit the selected message to one line so neighbours stay visible.
+
+**Done:**
+- `renderMarquee()`: time-based offset, 1.5 s pause, 20 px/s, 1.5 s pause at the end, restart. It only moves if the text is wider than the line. `renderTextRaw()` draws from a negative x and lets the display clip. The scroll position resets whenever the screen or selection changes.
+- The display refreshes every **50 ms only while a marquee is moving**, otherwise every 1 s as before.
+- **Selected block:** sender row + **one** size-2 line (24 px), so there's always one older line above and one newer line below.
+- **Detail:** the body is one size-2 line with the same marquee (was: wrapped to 2 lines). This keeps both behaving the same. Easy to revert to "wrap if it fits, else scroll" if preferred.
+- Removed the now-unused `renderWrapped()`.
+
+---
+
 ## 2026-09-25 — GPS status icon in header
 
 **Request:** a status icon left of the battery: a location pin with a GPS fix, crossed out without one. The position must be checked periodically in the background.

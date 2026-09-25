@@ -114,8 +114,14 @@ private:
   void renderChatLine(int idx, int y);
   void renderChatSelected();
   void renderText(int x, int y, int max_w, const char* str, int sz = 1);
-  int  renderWrapped(int x, int y, int max_w, const char* str, int sz, int max_lines, bool draw);
   int  textWidth(const char* str, int sz = 1);
+
+  // horizontal scrolling of long single-line text (selected message, detail)
+  unsigned long _scroll_start;
+  int _scroll_key;       // screen + selection the scroll position belongs to
+  bool _scrolling;       // set while rendering if a marquee is moving -> fast refresh
+  void renderTextRaw(int x, int y, const char* str, int sz);
+  void renderMarquee(int x, int y, int w, const char* str, int sz);
 
 public:
   UITask(mesh::MainBoard* board, MultiSerialInterface* serial)
@@ -132,6 +138,9 @@ public:
     _option = 0;
     _hold_start = _pair_until = _pair_reenable_at = 0;
     _hold_fired = _pair_saw_idle = false;
+    _scroll_start = 0;
+    _scroll_key = -1;
+    _scrolling = false;
   }
 
   void begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* node_prefs);

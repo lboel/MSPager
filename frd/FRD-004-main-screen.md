@@ -20,8 +20,8 @@
 4. Unread messages SHALL be marked with a leading `•` (or an inverted sender name).
 5. **Accessibility:** the selected message (see [FRD-002](FRD-002-single-button-input.md)) SHALL be shown **enlarged** as an inverted block:
    - the sender at normal size (with `»` if it's for me), then
-   - the message body at **double size** (11 columns, word-wrapped, at most 2 lines, then ellipsized).
-   - Around it: one older message as a normal line above (context, only if the body fits on one line) and newer lines below as space allows (above the hint row).
+   - the message body at **double size** on **one single line** (11 columns). Longer text **scrolls slowly horizontally** (marquee: 1.5 s pause, ~20 px/s, 1.5 s pause at the end, restart).
+   - Around it: always one older message as a normal line above (context) and one newer line below (above the hint row).
 6. With no messages, the screen SHALL show "No messages yet".
 7. **Button hint** at the bottom (separator line + one text row, same place and style as on all other screens):
 
@@ -52,8 +52,8 @@ rows 2–6 (5 message lines, oldest at top, newest at bottom), then the hint row
 |Anna            [▮▮▮ ]|   header
 |Ben: @Anna Ja         |   older message (context)
 |██ Cleo ██████████████|   inverted block: sender (small)
-|██ Brauche ███████████|   body at double size
-|██ Hilfe ████████████ |   (2nd line if needed)
+|██ Brauche Hil ███████|   body at double size, one line, scrolls if long
+|Anna: Ja              |   newer message
 ```
 Size 2 uses an 11 px character step (10 px glyph + 1 px gap) instead of GFX's 12 px, so 11 characters fit and `Angekommen?` stays on one line.
 

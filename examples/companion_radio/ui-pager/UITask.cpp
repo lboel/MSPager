@@ -40,7 +40,12 @@ static const uint8_t phone_glyph_2x[32] = {   // pixel-doubled, 16x16
 // GPS status icons, 8x8, MSB first (header, left of the battery)
 static const uint8_t gps_fix_icon[8]   = { 0x3C, 0x7E, 0xE7, 0xE7, 0x7E, 0x3C, 0x18, 0x18 };  // filled pin
 static const uint8_t gps_nofix_icon[8] = { 0x3D, 0x42, 0x85, 0x89, 0x52, 0x24, 0x58, 0x80 };  // hollow pin, slashed
-#define GPS_FIX_CURRENT_MILLIS  5000   // fix counts as current if the last valid reading is this recent
+#define GPS_FIX_CURRENT_MILLIS  5000
+
+// marquee: pause, scroll at MARQUEE_PX_PER_SEC, pause at the end, jump back
+#define MARQUEE_PAUSE_MILLIS  1500
+#define MARQUEE_PX_PER_SEC    20
+#define MARQUEE_FRAME_MILLIS  50   // fix counts as current if the last valid reading is this recent
 
 // Per-cell advance. Size 2 uses 11px instead of GFX's 12px (10px glyph + 1px gap),
 // so 11 chars fit the 128px width and "Angekommen?" stays on one line.
@@ -498,39 +503,55 @@ void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
   _display->setTextSize(1);
 }
 
-// Word-wraps str into at most max_lines lines (the last one ellipsized). Returns lines used.
-// With draw=false it only measures.
-int UITask::renderWrapped(int x, int y, int max_w, const char* str, int sz, int max_lines, bool draw) {
-  char line[MAX_TEXT_LEN + 1];
-  const char* p = str;
-  int n = 0;
-  while (*p && n < max_lines) {
-    while (*p == ' ') p++;
-    if (!*p) break;
-    int len;
-    if (n == max_lines - 1) {
-      len = strlen(p);                  // last line: the rest, truncated by renderText
-    } else {
-      len = 0;
-      for (const char* q = p; ; ) {     // take whole words while they fit
-        const char* wend = q;
-        while (*wend && *wend != ' ') wend++;
-        int cand = wend - p;
-        memcpy(line, p, cand);
-        line[cand] = 0;
-        if (len > 0 && textWidth(line, sz) > max_w) break;
-        len = cand;
-        if (!*wend) break;
-        q = wend + 1;
+// Draws the whole string from x (may be negative), no truncation; off-screen cells are skipped.
+void UITask::renderTextRaw(int x, int y, const char* str, int sz) {
+  int cx = x;
+  char ch[2] = { 0, 0 };
+  _display->setTextSize(sz);
+  for (const char* p = str; *p && cx < _display->width(); ) {
+    if (strncmp(p, PHONE_UTF8, 4) == 0) {
+      if (cx + glyphW(sz) > 0) {
+        if (sz == 2) _display->drawXbm(cx, y, phone_glyph_2x, 16, 16);
+        else         _display->drawXbm(cx, y, phone_glyph, 8, 8);
       }
+      cx += glyphW(sz);
+      p += 4;
+      continue;
     }
-    memcpy(line, p, len);
-    line[len] = 0;
-    if (draw) renderText(x, y + n * 8 * sz, max_w, line, sz);
-    n++;
-    p += len;
+    unsigned char c = (unsigned char)*p++;
+    if (c >= 0x80) {
+      c = 0xDB;
+      while ((*p & 0xC0) == 0x80) p++;
+    } else if (c < 32) {
+      c = ' ';
+    }
+    if (cx + cellW(sz) > 0) {
+      ch[0] = (char)c;
+      _display->setCursor(cx, y);
+      _display->print(ch);
+    }
+    cx += cellW(sz);
   }
-  return n;
+  _display->setTextSize(1);
+}
+
+// Single line; if wider than w it scrolls slowly left, pauses at both ends, then restarts.
+// Meant for lines spanning (almost) the full display width, which does the clipping.
+void UITask::renderMarquee(int x, int y, int w, const char* str, int sz) {
+  int max_off = textWidth(str, sz) - w;
+  if (max_off <= 0) {
+    renderTextRaw(x, y, str, sz);
+    return;
+  }
+  unsigned long scroll_ms = (unsigned long)max_off * 1000 / MARQUEE_PX_PER_SEC;
+  unsigned long cycle = MARQUEE_PAUSE_MILLIS + scroll_ms + MARQUEE_PAUSE_MILLIS;
+  unsigned long t = (millis() - _scroll_start) % cycle;
+  int off;
+  if (t < MARQUEE_PAUSE_MILLIS)                    off = 0;
+  else if (t < MARQUEE_PAUSE_MILLIS + scroll_ms)   off = (t - MARQUEE_PAUSE_MILLIS) * MARQUEE_PX_PER_SEC / 1000;
+  else                                             off = max_off;
+  renderTextRaw(x - off, y, str, sz);
+  _scrolling = true;
 }
 
 // draws the battery icon top right, returns its left x
@@ -639,11 +660,10 @@ void UITask::renderChatSelected() {
   PagerMsg* m = msgAt(_sel);
   char body[MAX_TEXT_LEN + 40];
   displayBody(body, sizeof(body), m);
-  int lines = renderWrapped(0, 0, _display->width() - 2, body, 2, 2, false);
-  int block_h = LINE_H + lines * 16;   // sender row + body rows (size-2 glyphs leave 2 blank rows at the bottom)
+  int block_h = LINE_H + 16;           // sender row + one size-2 row (glyphs leave 2 blank rows at the bottom)
 
   int y = CHAT_Y0;
-  if (_sel > 0 && lines == 1) {        // older message as context, if the block leaves room
+  if (_sel > 0) {                      // older message as context
     renderChatLine(_sel - 1, y);
     y += LINE_H;
   }
@@ -659,7 +679,7 @@ void UITask::renderChatSelected() {
   } else {
     renderText(1, y + 1, _display->width() - 2, m->sender);
   }
-  renderWrapped(1, y + 1 + LINE_H, _display->width() - 2, body, 2, 2, true);
+  renderMarquee(1, y + 1 + LINE_H, _display->width() - 2, body, 2);   // long text scrolls
   _display->setColor(UIColor::primary_txt);
 
   y += block_h;
@@ -685,7 +705,7 @@ void UITask::renderDetail() {
   renderText(_display->width() - rel_w - 2, 1, rel_w, rel);
 
   _display->setColor(UIColor::primary_txt);
-  renderWrapped(0, 12, _display->width(), m->body, 2, 2, true);
+  renderMarquee(0, 20, _display->width(), m->body, 2);   // double size, long text scrolls
 
   char coords[32], age[16];
   const PagerPos& pos = m->pos;
@@ -791,8 +811,15 @@ void UITask::loop() {
     setScreen(Screen::CHAT);
   }
 
+  int scroll_key = (int)_screen * 100 + _sel;
+  if (scroll_key != _scroll_key) {   // new message or screen: marquee starts over
+    _scroll_key = scroll_key;
+    _scroll_start = millis();
+  }
+
   if (_display != NULL && _display->isOn()) {
     if (millis() >= _next_refresh) {
+      _scrolling = false;
       _display->startFrame();
       _display->setTextSize(1);
       switch (_screen) {
@@ -812,7 +839,8 @@ void UITask::loop() {
         _display->drawTextCentered(_display->width() / 2, y + 7, _alert);
         _next_refresh = _alert_expiry;
       } else {
-        _next_refresh = millis() + 1000;   // ages and battery update once per second
+        // marquee needs frames; otherwise ages, battery and GPS icon update once per second
+        _next_refresh = millis() + (_scrolling ? MARQUEE_FRAME_MILLIS : 1000);
       }
       _display->endFrame();
     }
