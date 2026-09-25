@@ -81,6 +81,12 @@ private:
   void updateFix();
   PagerPos currentPos();
 
+  // new-message LED alert (FRD-014)
+  bool _led_alert;              // blinking until the overview is acknowledged with a press
+  bool _led_on;
+  unsigned long _led_next;
+  void ledLoop();
+
   // automatic answer to "Standort?" (FRD-019)
   unsigned long _auto_reply_at;
   char _auto_reply_to[32];
@@ -139,6 +145,8 @@ public:
     _hold_start = _pair_until = _pair_reenable_at = 0;
     _hold_fired = _pair_saw_idle = false;
     _scroll_start = 0;
+    _led_alert = _led_on = false;
+    _led_next = 0;
     _scroll_key = -1;
     _scrolling = false;
   }

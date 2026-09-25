@@ -19,7 +19,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-011](frd/FRD-011-gps-acquisition.md) | GPS acquisition (always on, last fix kept) | M3 | Implemented |
 | [FRD-012](frd/FRD-012-wire-format.md) | Wire format & length budget | M2/M3 | Implemented |
 | [FRD-013](frd/FRD-013-phone-emoji-rendering.md) | 📞 rendering as custom OLED glyph | M4 | Implemented |
-| [FRD-014](frd/FRD-014-new-message-alert.md) | New-message alert (display wake + LED blink) | M4 | Proposed |
+| [FRD-014](frd/FRD-014-new-message-alert.md) | New-message alert (display wake + LED blink until acknowledged) | M4 | Implemented |
 | [FRD-015](frd/FRD-015-configuration-via-app.md) | Configuration via MeshCore app (BLE always on) | M2 | Implemented |
 | [FRD-016](frd/FRD-016-inbox-storage.md) | Inbox storage (RAM ring buffer, 16 msgs) | M2 | Implemented |
 | [FRD-017](frd/FRD-017-ble-pairing-mode.md) | BLE pairing mode (hold 10 s, big PIN, 30 s) | M2 | Implemented |

@@ -204,3 +204,21 @@ Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, differ
 - [ ] 12. A: select one of B's messages → reply `Standort?`. **Only B** answers, and C stays silent.
 - [ ] 13. `Mein Standort` never triggers an answer (no loop). Watch for 30 s after step 10.
 - [ ] 14. Free text from the app without a suffix shows `no position` in detail and doesn't break anything.
+
+---
+
+## M4 — Alerting & polish (two pagers)
+
+### LED alert (FRD-014)
+- [ ] 1. A sends a message, and B's display is off: B's display wakes and the LED blinks (short flash about once per second).
+- [ ] 2. B: let the display time out. The LED **keeps blinking**.
+- [ ] 3. B: one press. The overview shows, the LED stops, and nothing gets selected.
+- [ ] 4. A sends again while B's display is on the overview: the LED blinks. **First press** on B: the LED stops, `•` disappears, and **no** message is selected. The second press selects as usual.
+- [ ] 5. B in the detail view or a picker when a message arrives: the LED blinks, and it stops once B returns to the overview (double press).
+- [ ] 6. All message types (`Brauche Hilfe`, mentions, `Standort?`, …) blink at the **same** rate.
+- [ ] 7. B's own messages and B's automatic `Mein Standort` answer don't make B's LED blink.
+- [ ] 8. Sending from A doesn't flash A's LED (the TX flash is gone).
+
+### Phone icon (FRD-013)
+- [ ] 9. The `📞` reply shows as a **desk phone** (handset on top, body with dial) in the chat list (small) and in the selected block / detail (large).
+- [ ] 10. The MeshCore app still shows the real 📞 emoji.

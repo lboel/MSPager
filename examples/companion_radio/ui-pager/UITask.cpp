@@ -32,10 +32,14 @@ static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93
 
 // U+1F4DE TELEPHONE RECEIVER, drawn as 8x8 glyph (FRD-013)
 static const char PHONE_UTF8[] = "\xF0\x9F\x93\x9E";
-static const uint8_t phone_glyph[8] = { 0x00, 0x3C, 0x7E, 0xE7, 0xC3, 0xC3, 0x00, 0x00 };
-static const uint8_t phone_glyph_2x[32] = {   // pixel-doubled, 16x16
-  0x00,0x00, 0x00,0x00, 0x0F,0xF0, 0x0F,0xF0, 0x3F,0xFC, 0x3F,0xFC, 0xFC,0x3F, 0xFC,0x3F,
-  0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00 };
+// old-style desk phone (handset on top, body with dial) - more recognizable than a lone receiver
+static const uint8_t phone_glyph[8] = { 0x7E, 0xC3, 0x00, 0x3C, 0x7E, 0x66, 0x7E, 0x00 };
+static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pixel-doubled)
+  0x00,0x00, 0x3F,0xFC, 0x7F,0xFE, 0xF0,0x0F, 0xF0,0x0F, 0x00,0x00, 0x07,0xE0, 0x0C,0x30,
+  0x1B,0xD8, 0x32,0x4C, 0x63,0xC6, 0x60,0x06, 0x7F,0xFE, 0x7F,0xFE, 0x00,0x00, 0x00,0x00 };
+
+#define LED_ON_MILLIS    100   // new-message blink (FRD-014)
+#define LED_OFF_MILLIS   900
 
 // GPS status icons, 8x8, MSB first (header, left of the battery)
 static const uint8_t gps_fix_icon[8]   = { 0x3C, 0x7E, 0xE7, 0xE7, 0x7E, 0x3C, 0x18, 0x18 };  // filled pin
@@ -87,6 +91,10 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
   _node_prefs = node_prefs;
 
   user_btn.begin();
+#ifdef PAGER_LED_PIN
+  pinMode(PAGER_LED_PIN, OUTPUT);
+  digitalWrite(PAGER_LED_PIN, LOW);
+#endif
 
   if (_display != NULL) {
     _display->turnOn();
@@ -170,6 +178,7 @@ void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, i
 
   addMsg(sender, body, false, pos);
   checkLocationRequest(sender, body);
+  _led_alert = true;
   if (_screen == Screen::CHAT || _screen == Screen::BOOT) {
     setScreen(Screen::CHAT);
   }
@@ -394,6 +403,25 @@ void UITask::displayBody(char* dest, size_t dest_size, const PagerMsg* m) {
     relText(rel, sizeof(rel), m);
     snprintf(dest + len, dest_size - len, " %s", rel);
   }
+}
+
+// ---------------------------------------------------------------- LED alert (FRD-014)
+
+void UITask::ledLoop() {
+#ifdef PAGER_LED_PIN
+  if (!_led_alert) {
+    if (_led_on) {
+      _led_on = false;
+      digitalWrite(PAGER_LED_PIN, LOW);
+    }
+    return;
+  }
+  if (millis() >= _led_next) {
+    _led_on = !_led_on;
+    digitalWrite(PAGER_LED_PIN, _led_on ? HIGH : LOW);
+    _led_next = millis() + (_led_on ? LED_ON_MILLIS : LED_OFF_MILLIS);
+  }
+#endif
 }
 
 // ---------------------------------------------------------------- BLE pairing mode (FRD-017)
@@ -776,6 +804,7 @@ void UITask::renderPicker(bool reply) {
 void UITask::loop() {
   checkPairingHold();
   updateFix();
+  ledLoop();
 
   if (_auto_reply_at && millis() >= _auto_reply_at) {
     _auto_reply_at = 0;
@@ -785,12 +814,18 @@ void UITask::loop() {
   int ev = user_btn.check();
   if (ev == BUTTON_EVENT_CLICK || ev == BUTTON_EVENT_LONG_PRESS || ev == BUTTON_EVENT_DOUBLE_CLICK) {
     if (_display != NULL && !_display->isOn()) {
-      wake();                // FRD-003: wake press is consumed
+      wake();                // FRD-003: wake press is consumed (shows the overview)
+      if (_screen == Screen::CHAT) _led_alert = false;   // FRD-014: overview opened
+    } else if (_led_alert && _screen == Screen::CHAT) {
+      _led_alert = false;    // FRD-014: first press on the overview only acknowledges
+      markVisibleRead();
+      wake();
     } else {
       if (ev == BUTTON_EVENT_CLICK) handleShort();
       else if (ev == BUTTON_EVENT_LONG_PRESS) handleLong();
       else handleDouble();
       if (_display != NULL && _display->isOn()) wake();   // restart timeout, refresh
+      if (_screen == Screen::CHAT) _led_alert = false;   // back on the overview
     }
   }
 

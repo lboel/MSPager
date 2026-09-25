@@ -23,12 +23,16 @@ void HeltecV4Board::begin() {
   }
 
   void HeltecV4Board::onBeforeTransmit(void) {
+#ifdef P_LORA_TX_LED
     digitalWrite(P_LORA_TX_LED, HIGH);   // turn TX LED on
+#endif
     loRaFEMControl.setTxModeEnable();
   }
 
   void HeltecV4Board::onAfterTransmit(void) {
+#ifdef P_LORA_TX_LED
     digitalWrite(P_LORA_TX_LED, LOW);   // turn TX LED off
+#endif
     loRaFEMControl.setRxModeEnable();
   }
 

@@ -4,6 +4,23 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — M4: Alerting & polish built
+
+**User requests for M4:** no different blink speeds; blink until the overview is opened with a tap; the phone emoji should look more like a phone on the display (the wire stays the official emoji).
+
+**Done**
+- **LED alert** (FRD-014): GPIO 35 blinks 100/900 ms on every message from another pager, whether the display is on or off.
+  - It stops when a press shows the overview: the wake press, the first press on an already-visible overview (acknowledge only, no selection), or returning to the overview from detail/picker.
+  - Own messages and auto-answers don't alert.
+- **TX flash removed** from the pager env (`build_unflags = -D P_LORA_TX_LED=35`). `HeltecV4Board.cpp` now guards its TX-LED writes with `#ifdef` (it used the macro unguarded, so the unflag broke the build). The stock companion is unchanged and still builds.
+- **📞 glyph** (FRD-013): an old-style desk phone (handset + body with dial), 8×8, plus a separately designed 16×16 for double size (no longer pixel-doubled). The wire stays U+1F4DE.
+
+**Decisions**
+- The first press on an already-visible overview is **consumed** as an acknowledgement, like the wake press, so confirming an alert never selects a message by accident.
+- The uniform blink replaces the FRD-014 idea of faster patterns for help/mentions.
+
+---
+
 ## 2026-09-25 — Bug: scrolling text leaked into the next row
 
 **Report:** in the detail view, a scrolling long message showed the next character on the line below.

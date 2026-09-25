@@ -151,7 +151,7 @@ Disconnect the app (Bluetooth stays on, and the app can reconnect any time). Pre
 | Turn the display off | **Double press** on the main screen, or wait 15 s |
 | Pair with the app (pager not found in the app) | From the main screen, **hold PRG for 10 s**. The large PIN appears for 30 s, so connect the app now |
 
-New message: the display lights up and the **LED blinks** until you've seen it. It blinks faster for "Brauche Hilfe" and for replies addressed to you.
+New message: the display lights up and the **LED blinks** until you press the button once on the message overview. That first press only confirms; it doesn't select anything.
 
 ---
 

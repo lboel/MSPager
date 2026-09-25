@@ -120,7 +120,7 @@ Replies carry a mention of the original sender, e.g. `@[Anna] Ja` ([FRD-007](frd
 |---|---|
 | The MeshCore app over BLE can still send free text into the channel | Accepted. The pager shows it as-is |
 | GPS cold start can take minutes indoors | Last-fix + age fallback. The flashing guide recommends a first fix outdoors |
-| GPIO 35 LED is shared with the LoRa TX indicator | The pager UI owns the LED. TX blink is disabled in the pager env (see FRD-014) |
+| GPIO 35 LED is shared with the LoRa TX indicator | Resolved in M4: the pager env removes the TX flash, and the LED is only used for new-message alerts (FRD-014) |
 | Nicknames longer than ~10 characters crowd the 21-column OLED | The guide recommends ≤10 characters. The UI ellipsizes |
 | No delivery confirmation for group messages | Social protocol via canned replies. A "heard repeat" indicator is a possible roadmap item |
 | BLE always on reduces battery life | Measure in M5. Revisit (e.g. auto-off BLE) if the target is missed |
