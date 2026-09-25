@@ -18,7 +18,10 @@
    - 📞 is rendered as a glyph ([FRD-013](FRD-013-phone-emoji-rendering.md)).
    - Lines that are too long SHALL be ellipsized.
 4. Unread messages SHALL be marked with a leading `•` (or an inverted sender name).
-5. The selected message (see [FRD-002](FRD-002-single-button-input.md)) SHALL be shown inverted. The list scrolls so the selection stays visible.
+5. **Accessibility:** the selected message (see [FRD-002](FRD-002-single-button-input.md)) SHALL be shown **enlarged** as an inverted block:
+   - the sender at normal size (with `»` if it's for me), then
+   - the message body at **double size** (11 columns, word-wrapped, at most 2 lines, then ellipsized).
+   - Around it: one older message as a normal line above (context) and as many newer lines below as fit.
 6. With no messages, the screen SHALL show "No messages yet" and "Hold: send".
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
@@ -31,6 +34,16 @@ rows 2–7 (6 message lines, oldest at top, newest at bottom):
       |Ben: Brauche Hilfe      |
       |•Cleo: @Ben [☎]         |
 ```
+
+### Selected layout
+```
+|Anna       123456  87%|   header
+|Ben: @Anna Ja         |   older message (context)
+|██ Cleo ██████████████|   inverted block: sender (small)
+|██ Brauche ███████████|   body at double size
+|██ Hilfe ████████████ |   (2nd line if needed)
+```
+Size 2 uses an 11 px character step (10 px glyph + 1 px gap) instead of GFX's 12 px, so 11 characters fit and `Angekommen?` stays on one line.
 
 ## Acceptance criteria
 - Battery and at least 6 recent messages are visible together.

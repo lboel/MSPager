@@ -8,9 +8,8 @@
 
 ## Requirement
 1. Opening a message SHALL show a detail screen with:
-   - **Sender nickname** (large or bold in the first row)
-   - **Message text** (the canned text, with the mention if present)
-   - **Age** of the message (`2 min ago`, `1 h ago`)
+   - **Sender nickname** (inverted title bar, left) and the **age** of the message (title bar, right: `2 min ago`, `1 h ago`)
+   - **Message text at double size** (accessibility), word-wrapped, at most 2 lines, with the full mention if present
    - **Distance and bearing** from the own current position to the sender's position, e.g. `1.2 km NE` (`< 1 km`: metres, rounded to 10 m)
    - **Coordinates** as sent, e.g. `52.5201, 13.4050`. If the position is a stale last fix, also its age (`fix ~12min old`)
 2. All of the above SHALL fit on one screen, without scrolling.
@@ -20,12 +19,11 @@
 
 ## Layout (128×64)
 ```
-|Anna                   |
-|Angekommen?            |
-|2 min ago              |
-|1.2 km NE              |
-|52.5201, 13.4050       |
-|Hold: reply  2x: back  |
+|Anna          2 min ago|   title bar
+|Angekommen?            |   double size (16 px high)
+|                       |   2nd body line if needed
+|Position: unknown      |   M3: distance/bearing + coords
+|Hold:reply  2x:back    |
 ```
 
 ## Acceptance criteria

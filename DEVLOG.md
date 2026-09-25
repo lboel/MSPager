@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Accessibility: large selected message and detail text
+
+**Request:** show the selected message at about twice the font size, and also the message in the detail view.
+
+**Done:**
+- `renderText()` / `textWidth()` now take a text size (1 or 2). New `renderWrapped()` does word wrapping with a maximum line count and an ellipsis on the last line.
+- Size 2 advances **11 px** per character instead of GFX's 12 px, so 11 characters fit in 128 px and `Angekommen?` stays on one line.
+- A 16×16 handset glyph for 📞 at size 2.
+- **Chat with a selection** (`renderChatSelected()`): one older line for context, then an inverted block (sender small, body at double size, up to 2 lines), then newer lines as space allows. Without a selection, the list is unchanged.
+- **Detail:** the age moved to the title bar (right) to make room, and the body is at double size (2 lines). The position line and hint stay small.
+- `markVisibleRead()` matches the new selected layout.
+
+---
+
 ## 2026-09-25 — Group config file `pager.ini` (FRD-018) + EU radio defaults
 
 **Test feedback:** a message from one pager didn't arrive at the other. Cause: M2 gave every pager its own random channel key, and the keys were never shared by QR.

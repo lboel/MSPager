@@ -84,6 +84,13 @@ Firmware: `heltec_v4_pager-v0.2.0-m2-<sha>-merged.bin`. Pagers **A** and **B**, 
 - [ ] 15b. With the app connected to A: send `Angekommen?` from **A's button UI**. The app shows it in `Pager` as `Anna: Angekommen?` (listed as coming from `Anna`, not as your own bubble).
 - [ ] 16. With the app connected to A, send free text into `Pager` from the app. B shows `•Anna: <text>`, and A shows `me: <text>` (no alert).
 
+### Large text (FRD-004, FRD-005)
+- [ ] 16k. Select a message: it's shown as an inverted block with the sender small and the text at **double size**. The older message is visible above it, and newer ones below if there's room.
+- [ ] 16l. `Angekommen?` fits on **one** large line. `Brauche Hilfe` wraps to two (`Brauche` / `Hilfe`).
+- [ ] 16m. A selected `📞` reply shows a **large** handset icon.
+- [ ] 16n. Step through all messages with short presses: the block moves, and nothing overlaps or runs off the bottom (also for the oldest and newest message).
+- [ ] 16o. Open the detail view: the sender is left and the age right in the title bar, and the message is at double size.
+
 ### Header: name + PIN + battery (FRD-004)
 - [ ] 16b. The chat header shows the nickname (left), the BLE PIN (right-aligned, same as the boot screen) and the battery percentage (e.g. `87%`), all on one line with no overlap. The PIN doesn't shift between `100%` and `9%`.
 - [ ] 16c. It stays like that while and after the app is connected.

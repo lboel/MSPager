@@ -27,8 +27,15 @@ static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93
 
 // U+1F4DE TELEPHONE RECEIVER, drawn as 8x8 glyph (FRD-013)
 static const char PHONE_UTF8[] = "\xF0\x9F\x93\x9E";
-#define PHONE_GLYPH_W  9   // 8px glyph + 1px spacing
 static const uint8_t phone_glyph[8] = { 0x00, 0x3C, 0x7E, 0xE7, 0xC3, 0xC3, 0x00, 0x00 };
+static const uint8_t phone_glyph_2x[32] = {   // pixel-doubled, 16x16
+  0x00,0x00, 0x00,0x00, 0x0F,0xF0, 0x0F,0xF0, 0x3F,0xFC, 0x3F,0xFC, 0xFC,0x3F, 0xFC,0x3F,
+  0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0xF0,0x0F, 0x00,0x00, 0x00,0x00, 0x00,0x00, 0x00,0x00 };
+
+// Per-cell advance. Size 2 uses 11px instead of GFX's 12px (10px glyph + 1px gap),
+// so 11 chars fit the 128px width and "Angekommen?" stays on one line.
+static int cellW(int sz)  { return sz == 2 ? 11 : CHAR_W; }
+static int glyphW(int sz) { return sz == 2 ? 17 : 9; }      // phone glyph + 1px gap
 
 // "@[Anna] Ja" -> "@Anna Ja"
 static void compactMention(char* dest, size_t dest_size, const char* src) {
@@ -97,9 +104,15 @@ PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own) {
 }
 
 void UITask::markVisibleRead() {
-  int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
-  if (_sel >= 0 && _sel < first) first = _sel;
-  for (int i = first; i < first + CHAT_LINES && i < _inbox_count; i++) {
+  int first, last;
+  if (_sel >= 0) {                 // selected layout: one older line, the block, a few newer lines
+    first = _sel > 0 ? _sel - 1 : 0;
+    last = _sel + 3;
+  } else {                         // plain layout: latest CHAT_LINES
+    first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
+    last = _inbox_count - 1;
+  }
+  for (int i = first; i <= last && i < _inbox_count; i++) {
     msgAt(i)->unread = false;
   }
 }
@@ -342,14 +355,14 @@ void UITask::renderPairing() {
 
 // ---------------------------------------------------------------- rendering
 
-int UITask::textWidth(const char* str) {
+int UITask::textWidth(const char* str, int sz) {
   int w = 0;
   for (const char* p = str; *p; ) {
     if (strncmp(p, PHONE_UTF8, 4) == 0) {
-      w += PHONE_GLYPH_W;
+      w += glyphW(sz);
       p += 4;
     } else {
-      w += CHAR_W;
+      w += cellW(sz);
       p++;
       while ((*p & 0xC0) == 0x80) p++;  // one cell per UTF-8 codepoint
     }
@@ -357,23 +370,25 @@ int UITask::textWidth(const char* str) {
   return w;
 }
 
-// Draws text with the phone glyph inline; other non-ASCII codepoints become a block.
+// Draws text at size 1 or 2 with the phone glyph inline; other non-ASCII codepoints become a block.
 // Truncates with "..." if wider than max_w.
-void UITask::renderText(int x, int y, int max_w, const char* str) {
-  bool truncate = textWidth(str) > max_w;
-  int limit = truncate ? max_w - 3 * CHAR_W : max_w;
+void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
+  bool truncate = textWidth(str, sz) > max_w;
+  int limit = truncate ? max_w - 3 * cellW(sz) : max_w;
   int cx = x;
   char ch[2] = { 0, 0 };
 
+  _display->setTextSize(sz);
   for (const char* p = str; *p; ) {
     if (strncmp(p, PHONE_UTF8, 4) == 0) {
-      if (cx + PHONE_GLYPH_W - x > limit) break;
-      _display->drawXbm(cx, y, phone_glyph, 8, 8);
-      cx += PHONE_GLYPH_W;
+      if (cx + glyphW(sz) - x > limit) break;
+      if (sz == 2) _display->drawXbm(cx, y, phone_glyph_2x, 16, 16);
+      else         _display->drawXbm(cx, y, phone_glyph, 8, 8);
+      cx += glyphW(sz);
       p += 4;
       continue;
     }
-    if (cx + CHAR_W - x > limit) break;
+    if (cx + cellW(sz) - x > limit) break;
     unsigned char c = (unsigned char)*p++;
     if (c >= 0x80) {
       c = 0xDB;  // CP437 full block
@@ -384,12 +399,49 @@ void UITask::renderText(int x, int y, int max_w, const char* str) {
     ch[0] = (char)c;
     _display->setCursor(cx, y);
     _display->print(ch);
-    cx += CHAR_W;
+    cx += cellW(sz);
   }
-  if (truncate) {
+  for (int i = 0; truncate && i < 3; i++) {
     _display->setCursor(cx, y);
-    _display->print("...");
+    _display->print(".");
+    cx += cellW(sz);
   }
+  _display->setTextSize(1);
+}
+
+// Word-wraps str into at most max_lines lines (the last one ellipsized). Returns lines used.
+// With draw=false it only measures.
+int UITask::renderWrapped(int x, int y, int max_w, const char* str, int sz, int max_lines, bool draw) {
+  char line[MAX_TEXT_LEN + 1];
+  const char* p = str;
+  int n = 0;
+  while (*p && n < max_lines) {
+    while (*p == ' ') p++;
+    if (!*p) break;
+    int len;
+    if (n == max_lines - 1) {
+      len = strlen(p);                  // last line: the rest, truncated by renderText
+    } else {
+      len = 0;
+      for (const char* q = p; ; ) {     // take whole words while they fit
+        const char* wend = q;
+        while (*wend && *wend != ' ') wend++;
+        int cand = wend - p;
+        memcpy(line, p, cand);
+        line[cand] = 0;
+        if (len > 0 && textWidth(line, sz) > max_w) break;
+        len = cand;
+        if (!*wend) break;
+        q = wend + 1;
+      }
+    }
+    memcpy(line, p, len);
+    line[len] = 0;
+    if (draw) renderText(x, y + n * 8 * sz, max_w, line, sz);
+    n++;
+    p += len;
+  }
+  return n;
 }
 
 // draws the battery percentage top right, returns its left x
@@ -455,62 +507,97 @@ void UITask::renderChat() {
     return;
   }
 
-  // window of CHAT_LINES messages ending at the newest, scrolled to keep the selection visible
-  int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
-  if (_sel >= 0 && _sel < first) first = _sel;
-
-  for (int i = 0; i < CHAT_LINES && first + i < _inbox_count; i++) {
-    PagerMsg* m = msgAt(first + i);
-    int y = CHAT_Y0 + i * LINE_H;
-    bool selected = (first + i == _sel);
-
-    char body[MAX_TEXT_LEN + 1];
-    compactMention(body, sizeof(body), m->body);
-    char line[MAX_TEXT_LEN + 40];
-    snprintf(line, sizeof(line), "%s: %s", m->sender, body);
-
-    // CP437 markers, printed raw (renderText treats bytes >= 0x80 as UTF-8)
-    char prefix[3];
-    int np = 0;
-    if (m->unread) prefix[np++] = '\x07';  // bullet
-    if (m->for_me) prefix[np++] = '\xAF';  // >>
-    prefix[np] = 0;
-
-    if (selected) {
-      _display->setColor(UIColor::title_txt);
-      _display->fillRect(0, y - 1, _display->width(), LINE_H);
-      _display->setColor(UIColor::window_bkg);
-    } else {
-      _display->setColor(UIColor::primary_txt);
-    }
-    if (np > 0) {
-      _display->setCursor(0, y);
-      _display->print(prefix);
-    }
-    renderText(np * CHAR_W, y, _display->width() - np * CHAR_W, line);
+  if (_sel >= 0) {
+    renderChatSelected();
+    return;
   }
+
+  // latest CHAT_LINES messages, newest at the bottom
+  int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
+  for (int i = 0; i < CHAT_LINES && first + i < _inbox_count; i++) {
+    renderChatLine(first + i, CHAT_Y0 + i * LINE_H);
+  }
+}
+
+// one small chat line: "[markers]<sender>: <body>"
+void UITask::renderChatLine(int idx, int y) {
+  PagerMsg* m = msgAt(idx);
+  char body[MAX_TEXT_LEN + 1];
+  compactMention(body, sizeof(body), m->body);
+  char line[MAX_TEXT_LEN + 40];
+  snprintf(line, sizeof(line), "%s: %s", m->sender, body);
+
+  // CP437 markers, printed raw (renderText treats bytes >= 0x80 as UTF-8)
+  char prefix[3];
+  int np = 0;
+  if (m->unread) prefix[np++] = '\x07';  // bullet
+  if (m->for_me) prefix[np++] = '\xAF';  // >>
+  prefix[np] = 0;
+
   _display->setColor(UIColor::primary_txt);
+  if (np > 0) {
+    _display->setCursor(0, y);
+    _display->print(prefix);
+  }
+  renderText(np * CHAR_W, y, _display->width() - np * CHAR_W, line);
+}
+
+// Selected message enlarged (FRD-004): one older line for context, then an inverted block
+// with the sender (small) and the body at double size, then newer lines as space allows.
+void UITask::renderChatSelected() {
+  PagerMsg* m = msgAt(_sel);
+  int y = CHAT_Y0 - 1;
+
+  if (_sel > 0) {
+    renderChatLine(_sel - 1, y + 1);
+    y += LINE_H + 1;
+  }
+
+  char body[MAX_TEXT_LEN + 1];
+  compactMention(body, sizeof(body), m->body);
+  int lines = renderWrapped(0, 0, _display->width() - 2, body, 2, 2, false);
+  int block_h = 1 + LINE_H + lines * 16 + 1;
+
+  _display->setColor(UIColor::title_txt);
+  _display->fillRect(0, y, _display->width(), block_h);
+  _display->setColor(UIColor::window_bkg);
+
+  if (m->for_me) {
+    _display->setCursor(1, y + 1);
+    _display->print("\xAF");
+    renderText(1 + CHAR_W, y + 1, _display->width() - 2 - CHAR_W, m->sender);
+  } else {
+    renderText(1, y + 1, _display->width() - 2, m->sender);
+  }
+  renderWrapped(1, y + 1 + LINE_H, _display->width() - 2, body, 2, 2, true);
+  _display->setColor(UIColor::primary_txt);
+
+  y += block_h + 1;
+  for (int i = _sel + 1; i < _inbox_count && y + LINE_H <= _display->height(); i++) {
+    renderChatLine(i, y);
+    y += LINE_H;
+  }
 }
 
 void UITask::renderDetail() {
   PagerMsg* m = msgAt(_sel);
   if (m == NULL) { setScreen(Screen::CHAT); return; }
 
-  // sender as inverted title bar
+  // title bar: sender left, age right
+  char age[24];
+  formatAge(age, sizeof(age), m->rx_millis);
+  int age_w = textWidth(age);
   _display->setColor(UIColor::title_txt);
   _display->fillRect(0, 0, _display->width(), 10);
   _display->setColor(UIColor::window_bkg);
-  renderText(2, 1, _display->width() - 4, m->sender);
+  renderText(2, 1, _display->width() - age_w - 8, m->sender);
+  renderText(_display->width() - age_w - 2, 1, age_w, age);
 
+  // message body at double size (FRD-005), up to 2 lines
   _display->setColor(UIColor::primary_txt);
-  renderText(0, 14, _display->width(), m->body);
+  renderWrapped(0, 13, _display->width(), m->body, 2, 2, true);
 
-  char tmp[24];
-  formatAge(tmp, sizeof(tmp), m->rx_millis);
-  renderText(0, 26, _display->width(), tmp);
-  renderText(0, 36, _display->width(), "Position: unknown");   // M3: FRD-005/010
-
-  _display->fillRect(0, 53, _display->width(), 1);
+  renderText(0, 46, _display->width(), "Position: unknown");   // M3: FRD-005/010
   renderText(0, 56, _display->width(), "Hold:reply  2x:back");
 }
 

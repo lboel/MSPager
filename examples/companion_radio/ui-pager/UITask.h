@@ -93,8 +93,11 @@ private:
   void renderPairing();
   int  renderBattery();
   void renderHeader();
-  void renderText(int x, int y, int max_w, const char* str);
-  int  textWidth(const char* str);
+  void renderChatLine(int idx, int y);
+  void renderChatSelected();
+  void renderText(int x, int y, int max_w, const char* str, int sz = 1);
+  int  renderWrapped(int x, int y, int max_w, const char* str, int sz, int max_lines, bool draw);
+  int  textWidth(const char* str, int sz = 1);
 
 public:
   UITask(mesh::MainBoard* board, MultiSerialInterface* serial)
