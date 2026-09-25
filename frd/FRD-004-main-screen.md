@@ -8,10 +8,10 @@
 
 ## Requirement
 1. The main screen SHALL show, **at the same time**:
-   - a **header row** with the pager's **nickname** (left), the **BLE PIN** (right-aligned, next to the battery) and the **battery percentage** as text (no battery icon), always visible, and
+   - a **header row** with the pager's **nickname** (left), and a **battery icon** (right, fill level = charge, no percentage text). The BLE PIN is **not** shown here, only on the boot screen and in pairing mode ([FRD-017](FRD-017-ble-pairing-mode.md)), and
    - the **chat room**: the latest pager-channel messages, newest at the bottom.
 2. No other status information (GPS, BLE state, unread count) SHALL be shown on this screen.
-   - Header budget (128 px): percentage in a fixed 4-column slot (`100%`, right-aligned), 4 px gap, PIN 6 columns, 4 px gap, so the name gets **10 characters**. Longer names are ellipsized.
+   - Header budget (128 px): battery icon ≈ 23 px + 1 column gap, so the name gets **16 characters**. Longer names are ellipsized.
 3. Each message SHALL take one line in the form `<sender>: <text>`:
    - `<sender>` is the nickname ([FRD-009](FRD-009-sender-nickname.md)). Own messages show the sender as `me`.
    - `<text>` is the canned message without the position suffix. Mentions are shown compactly as `@Anna Ja`.
@@ -26,7 +26,7 @@
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
-row 0 |Anna       123456  87%|   header: nickname, BLE PIN, battery %
+row 0 |Anna              [▮▮▮ ]|   header: nickname, battery icon
 row 1 |────────────────────────|   separator line
 rows 2–7 (6 message lines, oldest at top, newest at bottom):
       |Anna: Angekommen?       |
@@ -37,7 +37,7 @@ rows 2–7 (6 message lines, oldest at top, newest at bottom):
 
 ### Selected layout
 ```
-|Anna       123456  87%|   header
+|Anna            [▮▮▮ ]|   header
 |Ben: @Anna Ja         |   older message (context)
 |██ Cleo ██████████████|   inverted block: sender (small)
 |██ Brauche ███████████|   body at double size

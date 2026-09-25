@@ -444,37 +444,25 @@ int UITask::renderWrapped(int x, int y, int max_w, const char* str, int sz, int 
   return n;
 }
 
-// draws the battery percentage top right, returns its left x
+// draws the battery icon top right, returns its left x
 int UITask::renderBattery() {
   uint16_t mv = getBattMilliVolts();
   int pct = ((int)mv - BATT_MIN_MILLIVOLTS) * 100 / (BATT_MAX_MILLIVOLTS - BATT_MIN_MILLIVOLTS);
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
 
-  char tmp[8];
-  snprintf(tmp, sizeof(tmp), "%d%%", pct);
-  int x = _display->width() - textWidth(tmp);
+  const int w = 20, h = 9;
+  int x = _display->width() - w - 3;
   _display->setColor(UIColor::title_txt);
-  _display->setCursor(x, 1);
-  _display->print(tmp);
-  return _display->width() - textWidth("100%");   // fixed column, so the PIN doesn't shift
+  _display->drawRect(x, 0, w, h);
+  _display->fillRect(x + w, 2, 2, h - 4);            // cap
+  _display->fillRect(x + 2, 2, (w - 4) * pct / 100, h - 4);
+  return x;
 }
 
-// header: "<name>      <pin> <pct>" - name left, BLE PIN right-aligned next to the battery percentage.
-// 4px gaps leave exactly 10 chars for the name next to a 6-digit PIN and "100%".
-#define HEADER_GAP  4
-
+// header: nickname left, battery icon right (BLE PIN only on boot and in pairing mode)
 void UITask::renderHeader() {
-  int right = renderBattery() - HEADER_GAP;
-
-  if (the_mesh.getBLEPin() != 0) {
-    char pin[12];
-    snprintf(pin, sizeof(pin), "%lu", (unsigned long)the_mesh.getBLEPin());
-    right -= textWidth(pin);
-    _display->setCursor(right, 1);
-    _display->print(pin);
-    right -= HEADER_GAP;
-  }
+  int right = renderBattery() - CHAR_W;
   renderText(0, 1, right, _node_prefs->node_name);
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 }

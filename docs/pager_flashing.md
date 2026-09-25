@@ -107,7 +107,7 @@ All pagers in a group need the **same radio preset** and the **same `Pager` chan
 
 ### 5.1 Connect
 1. Open the MeshCore app and connect to the device over Bluetooth (it shows up as `MeshCore-…`).
-2. Enter the **PIN shown on the pager's OLED**. It's always shown in the main screen's header, next to the battery.
+2. Enter the **PIN shown on the pager's OLED**. It's shown on the boot screen for the first 5 s. Later, **hold PRG for 10 s** (pairing mode) to show it in large digits.
 
 ### 5.2 Nickname
 - In the app settings, set the **node name** to the pager's nickname, e.g. `Anna`.

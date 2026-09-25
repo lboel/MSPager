@@ -4,6 +4,14 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Change: header = name + battery icon, PIN removed
+
+**Request:** remove the always-shown BLE code, and show the battery as a symbol instead of a percentage.
+
+**Done:** `renderHeader()` shows the nickname left (up to 16 characters) and the battery icon right (fill = charge). The PIN is now only on the boot screen (5 s) and in pairing mode (hold PRG 10 s, FRD-017). This reverts the two header changes from earlier today.
+
+---
+
 ## 2026-09-25 — Accessibility: large selected message and detail text
 
 **Request:** show the selected message at about twice the font size, and also the message in the detail view.
