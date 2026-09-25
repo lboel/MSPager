@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — Button hints on the main screen
+
+**Request:** the main screen needs button hints like the other screens, short and consistent.
+
+**Done:** a shared `renderHint()` (separator at y 53, text at y 56) used by every screen:
+- chat: `Hold:send  2x:off` (empty), `Tap:select  Hold:send` (list), `Hold:open  2x:back` (selected)
+- detail: `Hold:reply  2x:back`
+- pickers: `Hold:send  2x:cancel`
+- pairing: `Tap:cancel` (previously "press: cancel")
+
+**Layout cost:** the chat list shows **5** lines instead of 6. The enlarged block lost its padding, and the older context line is only shown when the selected body fits on one line, so a 2-line body still fits above the hint.
+
+---
+
 ## 2026-09-25 — Change: header = name + battery icon, PIN removed
 
 **Request:** remove the always-shown BLE code, and show the battery as a symbol instead of a percentage.

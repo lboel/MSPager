@@ -21,18 +21,30 @@
 5. **Accessibility:** the selected message (see [FRD-002](FRD-002-single-button-input.md)) SHALL be shown **enlarged** as an inverted block:
    - the sender at normal size (with `»` if it's for me), then
    - the message body at **double size** (11 columns, word-wrapped, at most 2 lines, then ellipsized).
-   - Around it: one older message as a normal line above (context) and as many newer lines below as fit.
-6. With no messages, the screen SHALL show "No messages yet" and "Hold: send".
+   - Around it: one older message as a normal line above (context, only if the body fits on one line) and newer lines below as space allows (above the hint row).
+6. With no messages, the screen SHALL show "No messages yet".
+7. **Button hint** at the bottom (separator line + one text row, same place and style as on all other screens):
+
+   | State | Hint |
+   |---|---|
+   | no messages | `Hold:send  2x:off` |
+   | no pager channel | `2x:off` |
+   | messages, nothing selected | `Tap:select  Hold:send` |
+   | message selected | `Hold:open  2x:back` |
+
+   Other screens: detail `Hold:reply  2x:back`, pickers `Hold:send  2x:cancel`, pairing `Tap:cancel`.
 
 ## Layout (128×64, 6×8 font = 21 columns × 8 rows)
 ```
 row 0 |Anna              [▮▮▮ ]|   header: nickname, battery icon
 row 1 |────────────────────────|   separator line
-rows 2–7 (6 message lines, oldest at top, newest at bottom):
+rows 2–6 (5 message lines, oldest at top, newest at bottom), then the hint row:
       |Anna: Angekommen?       |
       |me: @Anna Ja            |
       |Ben: Brauche Hilfe      |
       |•Cleo: @Ben [☎]         |
+|────────────────────────|
+|Tap:select  Hold:send   |
 ```
 
 ### Selected layout
@@ -46,7 +58,7 @@ rows 2–7 (6 message lines, oldest at top, newest at bottom):
 Size 2 uses an 11 px character step (10 px glyph + 1 px gap) instead of GFX's 12 px, so 11 characters fit and `Angekommen?` stays on one line.
 
 ## Acceptance criteria
-- Battery and at least 6 recent messages are visible together.
+- Battery and at least 5 recent messages are visible together, plus the button hint.
 - A new message appears at the bottom within 1 s of reception.
 - The layout never overflows horizontally.
 

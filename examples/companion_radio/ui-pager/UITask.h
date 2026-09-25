@@ -93,6 +93,7 @@ private:
   void renderPairing();
   int  renderBattery();
   void renderHeader();
+  void renderHint(const char* hint);
   void renderChatLine(int idx, int y);
   void renderChatSelected();
   void renderText(int x, int y, int max_w, const char* str, int sz = 1);

@@ -16,8 +16,10 @@
 #define CHAR_W        6
 #define LINE_H        8
 #define HEADER_H      12
-#define CHAT_Y0       14
-#define CHAT_LINES    6
+#define CHAT_Y0       13
+#define CHAT_LINES    5
+#define HINT_SEP_Y    53    // separator above the button hint
+#define HINT_Y        56
 
 // canned message catalogue (FRD-006)
 static const char* const COMPOSE_OPTIONS[] = { "Angekommen?", "Brauche Hilfe" };
@@ -105,9 +107,9 @@ PagerMsg* UITask::addMsg(const char* sender, const char* body, bool own) {
 
 void UITask::markVisibleRead() {
   int first, last;
-  if (_sel >= 0) {                 // selected layout: one older line, the block, a few newer lines
+  if (_sel >= 0) {                 // selected layout: at most one older line, the block, one newer line
     first = _sel > 0 ? _sel - 1 : 0;
-    last = _sel + 3;
+    last = _sel + 1;
   } else {                         // plain layout: latest CHAT_LINES
     first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
     last = _inbox_count - 1;
@@ -349,8 +351,8 @@ void UITask::renderPairing() {
   long left = (long)(_pair_until - millis()) / 1000;
   if (left < 0) left = 0;
   snprintf(tmp, sizeof(tmp), "%s  %lds", _node_prefs->node_name, left);
-  _display->drawTextCentered(_display->width() / 2, 48, tmp);
-  _display->drawTextCentered(_display->width() / 2, 56, "press: cancel");
+  _display->drawTextCentered(_display->width() / 2, 44, tmp);
+  renderHint("Tap:cancel");
 }
 
 // ---------------------------------------------------------------- rendering
@@ -467,6 +469,13 @@ void UITask::renderHeader() {
   _display->fillRect(0, HEADER_H - 1, _display->width(), 1);
 }
 
+// button hint at the bottom, same place on every screen
+void UITask::renderHint(const char* hint) {
+  _display->setColor(UIColor::primary_txt);
+  _display->fillRect(0, HINT_SEP_Y, _display->width(), 1);
+  renderText(0, HINT_Y, _display->width(), hint);
+}
+
 void UITask::renderBoot() {
   _display->setColor(UIColor::title_txt);
   _display->setTextSize(2);
@@ -486,19 +495,22 @@ void UITask::renderChat() {
 
   if (_inbox_count == 0) {
     if (the_mesh.findPagerChannel() < 0) {
-      _display->drawTextCentered(_display->width() / 2, 26, "No '" PAGER_CHANNEL_NAME "' channel");
-      _display->drawTextCentered(_display->width() / 2, 42, "Configure via app");
+      _display->drawTextCentered(_display->width() / 2, 22, "No '" PAGER_CHANNEL_NAME "' channel");
+      _display->drawTextCentered(_display->width() / 2, 36, "Configure via app");
+      renderHint("2x:off");
       return;
     }
-    _display->drawTextCentered(_display->width() / 2, 26, "No messages yet");
-    _display->drawTextCentered(_display->width() / 2, 42, "Hold: send");
+    _display->drawTextCentered(_display->width() / 2, 28, "No messages yet");
+    renderHint("Hold:send  2x:off");
     return;
   }
 
   if (_sel >= 0) {
     renderChatSelected();
+    renderHint("Hold:open  2x:back");
     return;
   }
+  renderHint("Tap:select  Hold:send");
 
   // latest CHAT_LINES messages, newest at the bottom
   int first = _inbox_count > CHAT_LINES ? _inbox_count - CHAT_LINES : 0;
@@ -534,17 +546,16 @@ void UITask::renderChatLine(int idx, int y) {
 // with the sender (small) and the body at double size, then newer lines as space allows.
 void UITask::renderChatSelected() {
   PagerMsg* m = msgAt(_sel);
-  int y = CHAT_Y0 - 1;
-
-  if (_sel > 0) {
-    renderChatLine(_sel - 1, y + 1);
-    y += LINE_H + 1;
-  }
-
   char body[MAX_TEXT_LEN + 1];
   compactMention(body, sizeof(body), m->body);
   int lines = renderWrapped(0, 0, _display->width() - 2, body, 2, 2, false);
-  int block_h = 1 + LINE_H + lines * 16 + 1;
+  int block_h = LINE_H + lines * 16;   // sender row + body rows (size-2 glyphs leave 2 blank rows at the bottom)
+
+  int y = CHAT_Y0;
+  if (_sel > 0 && lines == 1) {        // older message as context, if the block leaves room
+    renderChatLine(_sel - 1, y);
+    y += LINE_H;
+  }
 
   _display->setColor(UIColor::title_txt);
   _display->fillRect(0, y, _display->width(), block_h);
@@ -560,8 +571,8 @@ void UITask::renderChatSelected() {
   renderWrapped(1, y + 1 + LINE_H, _display->width() - 2, body, 2, 2, true);
   _display->setColor(UIColor::primary_txt);
 
-  y += block_h + 1;
-  for (int i = _sel + 1; i < _inbox_count && y + LINE_H <= _display->height(); i++) {
+  y += block_h;
+  for (int i = _sel + 1; i < _inbox_count && y + LINE_H <= HINT_SEP_Y; i++) {
     renderChatLine(i, y);
     y += LINE_H;
   }
@@ -585,8 +596,8 @@ void UITask::renderDetail() {
   _display->setColor(UIColor::primary_txt);
   renderWrapped(0, 13, _display->width(), m->body, 2, 2, true);
 
-  renderText(0, 46, _display->width(), "Position: unknown");   // M3: FRD-005/010
-  renderText(0, 56, _display->width(), "Hold:reply  2x:back");
+  renderText(0, 45, _display->width(), "Position: unknown");   // M3: FRD-005/010
+  renderHint("Hold:reply  2x:back");
 }
 
 void UITask::renderPicker(bool reply) {
@@ -617,9 +628,7 @@ void UITask::renderPicker(bool reply) {
     renderText(4, y, _display->width() - 8, opts[i]);
   }
 
-  _display->setColor(UIColor::primary_txt);
-  _display->fillRect(0, 53, _display->width(), 1);
-  renderText(0, 56, _display->width(), "Hold:send  2x:cancel");
+  renderHint("Hold:send  2x:cancel");
 }
 
 // ---------------------------------------------------------------- loop
