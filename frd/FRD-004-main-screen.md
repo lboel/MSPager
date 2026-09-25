@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M1, layout + local data) |
 | Milestone | M1 (layout), M2 (data) |
 | PRD | US-1, US-3 |
 

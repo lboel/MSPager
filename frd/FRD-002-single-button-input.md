@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M1) |
 | Milestone | M1 |
 | PRD | §5.1, US-1, US-2, US-5 |
 
@@ -14,8 +14,8 @@ Only **PRG (GPIO 0)** is readable by firmware. **RST** is hard-wired to the ESP3
 
    | Gesture | Definition | Generic meaning |
    |---|---|---|
-   | **Short** | press < 800 ms, no second press within the multi-click window | *next* |
-   | **Long** | press held ≥ 800 ms (fires once, on threshold) | *select / send / confirm* |
+   | **Short** | press < 1000 ms, no second press within the multi-click window | *next* |
+   | **Long** | press held ≥ 1000 ms (fires once, on threshold) | *select / send / confirm* |
    | **Double** | two short presses within the multi-click window | *back / cancel* |
 
 2. Triple-click and other gestures SHALL be ignored.
@@ -39,5 +39,5 @@ Only **PRG (GPIO 0)** is readable by firmware. **RST** is hard-wired to the ESP3
 - Pressing RST reboots the device (expected hardware behaviour, documented in the guide).
 
 ## Implementation notes
-- Reuse `MomentaryButton` (`src/helpers/ui/MomentaryButton.h`): `MomentaryButton(PIN_USER_BTN, 800, true, false, true)`. It emits `BUTTON_EVENT_CLICK`, `BUTTON_EVENT_DOUBLE_CLICK` and `BUTTON_EVENT_LONG_PRESS`.
-- The multi-click window delays single-click events. Keep it short (~300 ms) so the UI stays responsive.
+- Reuse the variant's `user_btn` (`variants/heltec_v4/target.cpp`: `MomentaryButton(PIN_USER_BTN, 1000, true)`). It emits `BUTTON_EVENT_CLICK`, `BUTTON_EVENT_DOUBLE_CLICK` and `BUTTON_EVENT_LONG_PRESS`.
+- The multi-click window delays single-click events. It's fixed at 280 ms (`MULTI_CLICK_WINDOW_MS`) so the UI stays responsive.

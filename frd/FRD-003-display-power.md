@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M1) |
 | Milestone | M1 |
 | PRD | §8 (Display), US-1, US-6 |
 

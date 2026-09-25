@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M1) |
 | Milestone | M1 |
 | PRD | §4, §5 |
 

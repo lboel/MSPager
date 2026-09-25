@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | Implemented (M1) |
 | Milestone | M2 |
 | PRD | §9 (Robustness) |
 

@@ -4,6 +4,27 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-25 — M1: Skeleton built
+
+**Done**
+- New env `heltec_v4_pager` in `variants/heltec_v4/platformio.ini` (derived from `heltec_v4_companion_radio_ble`, with `ui-new` swapped for `ui-pager`).
+- New `examples/companion_radio/ui-pager/UITask.{h,cpp}`. It's a drop-in replacement for the companion `UITask` (no changes to `MyMesh` or `main.cpp`):
+  - screens: boot (name, version, BLE PIN), chat (battery + latest 6), detail, compose picker, reply picker
+  - PRG state machine per FRD-002, display power per FRD-003, 16-message inbox ring buffer (FRD-016)
+  - 📞 drawn as an 8×8 glyph (FRD-013, pulled forward because the reply picker needs it)
+- Build: `pio run -e heltec_v4_pager` succeeds (RAM 8.3 %, Flash 19.3 %). `build.sh` produces `out/heltec_v4_pager-v0.1.0-m1-<sha>{,-merged}.bin`.
+- Manual test checklist: [docs/pager_testing.md](docs/pager_testing.md).
+
+**Decisions / deviations**
+- Long press is **1000 ms**, not the 800 ms first written in FRD-002. The shared `user_btn` in `variants/heltec_v4/target.cpp` defines it and we don't want to touch the variant. FRD-002 is updated.
+- The companion **rescue CLI** is kept: a long press within the first 8 s after boot enters it (recovery path if BLE config breaks).
+- M1 sending is a **local echo only** (`M1: local only` popup), so the UI can be tested on a single device. M1 shows messages from every channel. Filtering comes in M2.
+
+**Next**
+- Device test (checklist M1). Then M2: pager-channel lookup by name, real `sendGroupMessage`, receive filter.
+
+---
+
 ## 2026-09-25 — M0: Specification
 
 **Done**
