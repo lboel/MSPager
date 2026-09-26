@@ -15,7 +15,7 @@ Wired straight to a GPIO, the speaker is nearly a short circuit, so the firmware
 - **short beeps**, and the pin is **left LOW** afterwards.
 
 ## Requirement
-1. When a pager-channel message from **another** pager arrives (the same cases that start the LED alert, [FRD-014](FRD-014-new-message-alert.md)), the pager SHALL play **one ICQ-style "uh-oh"** modelled on the spoken intonation: a short "uh" with a voice-like onset, a tiny gap, then an "oh" a fourth lower, twice as long and falling away (≈0.66 s total), transposed to ~2.2–3.1 kHz where small speakers are loudest. It's a melody imitation, not the original voice recording (which can't be played on a square-wave speaker and is copyrighted).
+1. When a pager-channel message from **another** pager arrives (the same cases that start the LED alert, [FRD-014](FRD-014-new-message-alert.md)), the pager SHALL play **two consecutive tones** ("uh-oh" style): the first at ~3.1 kHz for 150 ms, a ~40 ms gap, then the second **lower** (~2.35 kHz) and **slightly longer** (225 ms), ≈0.4 s total, transposed to ~2.2–3.1 kHz where small speakers are loudest. It's a melody imitation, not the original voice recording (which can't be played on a square-wave speaker and is copyrighted).
 2. Own messages and automatic `Mein Standort` answers SHALL NOT beep.
 3. The beep SHALL NOT repeat. The LED keeps blinking until acknowledged.
 4. It SHALL be optional per build: `-D PIN_BUZZER=<gpio>` (default **4** in `heltec_v4_pager`). Without the flag, no buzzer code is compiled in.
@@ -27,7 +27,7 @@ Wired straight to a GPIO, the speaker is nearly a short circuit, so the firmware
 - The GPIO is LOW when idle.
 
 ## Implementation notes
-- MeshCore's `genericBuzzer` (`src/helpers/ui/buzzer.*`, NonBlockingRTTTL), melody `uhoh:d=32,o=7,b=125:f#,16g,32p,8d,c#,c,b6` (F#7→G7 · pause · D7 → C#7 → C7 → B6). Alternatives noted in the code: the plain two-note uh-oh and the triple beep.
+- MeshCore's `genericBuzzer` (`src/helpers/ui/buzzer.*`, NonBlockingRTTTL), melody `uhoh:d=8,o=7,b=200:g,32p,d.` (G7 · pause · dotted D7).
 - `UITask::beep()` / `buzzerLoop()`: re-apply `gpio_set_drive_capability()` while a tone plays (`tone()` may re-attach the pin), then `pinMode(OUTPUT)` + LOW once it's done.
 - Even louder without a transistor: push-pull on two GPIOs in opposite phase (black wire to a second GPIO instead of GND, about 4× the power). Not implemented yet.
 - Louder: NPN transistor (GPIO → 1 kΩ → base, emitter → GND, collector → speaker → 3V3), then `PAGER_BUZZER_DRIVE=3`.

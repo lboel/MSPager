@@ -4,6 +4,14 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Message sound: two tones
+
+**Request:** just two consecutive sounds, the second slightly longer and lower.
+
+**Done:** `uhoh:d=8,o=7,b=200:g,32p,d.` gives G7 (~3.1 kHz, 150 ms), a ~40 ms gap, then D7 (~2.35 kHz, dotted = 225 ms). This replaces the intonation variant with the grace note and slide. NonBlockingRTTTL supports dotted notes (`d.` = 1.5× length).
+
+---
+
 ## 2026-09-26 — "uh-oh" closer to the original intonation
 
 **Request:** the classic melodic ICQ "oh oh".
