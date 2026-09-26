@@ -257,3 +257,17 @@ Tool: `pip install bleak`, then `bin/pager_setup.py` (or the setup frontend). Se
 - [ ] 15. Upload while the send menu is open on the pager: the pager goes back to chat and shows `Setup updated`.
 - [ ] 16. `clear <A>`: the channel is back to `Pager` with the `pager.secret.ini` key, and the send menu shows only the 4 built-in starters. The nickname stays `Anna`.
 - [ ] 17. The stock MeshCore app still works normally after all of this (channel list, messages).
+
+---
+
+## M4c — Emoji for kids (FRD-022, two pagers)
+
+Setup: [pager_setup_kids.yaml](pager_setup_kids.yaml) with a real key, once with `nickname: Mia` and once with another name. Upload with `bin/pager_setup.py`. Reference pictures: [pager_emoji.md](pager_emoji.md).
+
+- [ ] 1. Send menu: `Alles gut? 😀`, `Komm nach Hause 🏠`, … show the emoji as **pictures**, not blocks. The counter is `n/12`.
+- [ ] 2. Send `Wo bist du? 📍`. The receiver's chat list shows the small 📍, and the selected message and detail view show the large one.
+- [ ] 3. Reply menu for it: 🏠, 🏫, ⚽ and `Mein Standort`. Each emoji-only reply is a single picture.
+- [ ] 4. `Ich hole dich ab 🚗` → reply ❤️: one heart, with no block or gap after it (U+FE0F is ignored).
+- [ ] 5. From the MeshCore app, send `👍🏽 ❤️ 💙 🙂 🦄` into the channel. The pager shows 👍, ❤, ❤, 😀 as pictures and 🦄 as a block. The skin tone takes no space.
+- [ ] 6. The 📞 reply looks exactly as before (desk phone).
+- [ ] 7. Long texts with emoji scroll smoothly in the selected message (marquee), and pictures aren't cut into the next line.

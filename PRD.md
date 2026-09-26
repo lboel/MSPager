@@ -69,6 +69,7 @@ So the whole UI runs on **one button** with three gestures: **short press**, **l
 | US-7 | device admin | flash one firmware and set nickname/channel via the MeshCore app | setting up a new pager takes minutes |
 | US-9 | pager user | ask "where are you?" and get the others' positions automatically | I can find the group without anyone pressing a button |
 | US-8 | device admin | have stock MeshCore app users in the same channel read pager messages | a phone user can join the group |
+| US-11 | child | read and answer messages that use pictures (🏠 👍 🚗 🆘) instead of words | I can use the pager before I read well |
 | US-10 | device admin | set up flashed pagers from a frontend with one YAML file each (nickname, group channel, our own questions and replies) | a group gets its own messages without rebuilding the firmware |
 
 ## 7. Canned message catalogue

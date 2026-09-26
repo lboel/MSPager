@@ -1,0 +1,26 @@
+# MSPager setup for a family with kids (FRD-021, emoji: FRD-022).
+# Short texts plus emoji are easier to read for children than words alone.
+# The emoji listed in docs/pager_emoji.md show as pictures on the pager.
+version: 1
+nickname: Mia
+channel:
+  name: Familie
+  key: 00000000000000000000000000000000   # replace: openssl rand -hex 16
+
+questions:
+  - text: "Alles gut? 😀"
+    replies: ["👍", "😢", "🩹 Aua", "🆘"]
+  - text: "Komm nach Hause 🏠"
+    replies: ["👍", "⏰ 5 min", "❌"]
+  - text: "Essen ist fertig 🍴"
+    replies: ["👍 Komme", "⏰ Gleich"]
+  - text: "Ich hole dich ab 🚗"
+    replies: ["👍", "❤️", "❌"]
+  - text: "Wo bist du? 📍"
+    replies: ["🏠", "🏫", "⚽", "Mein Standort"]
+  - text: "Ich muss aufs Klo 🚽"
+    replies: ["👍", "⏰ Gleich"]
+  - text: "Hast du Durst? 🥤"
+    replies: ["👍", "👎"]
+  - text: "Bin müde 😴"
+    replies: ["🏠", "❤️"]

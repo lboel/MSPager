@@ -4,6 +4,55 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Emoji pictures for kids (FRD-022)
+
+**Request:** more emoji, so kids can use the pager. They must show on the pager.
+
+**Done**
+- **25 pictures, 82 codepoints** (including aliases such as every heart colour and similar smileys): 📞 👍 👎 ❤️ 😀 😢 😡 😴 👋 🏠 🏫 🚗 🚌 🚲 🍴 🥤 🚽 ⚽ ⏰ 📍 🆘 ✅ ❌ ❓ 🩹. Each one exists as 8×8 (chat, menus) and 16×16 (selected message, detail). The small ones leave row 7 empty, the large ones rows 14–15, the same as the font.
+- The pictures are ASCII art in `bin/gen_emoji_glyphs.py`. The script generates `EmojiGlyphs.h`, `docs/pager_emoji.md` and a preview `docs/pager_emoji.png`. The 📞 glyph was carried over bit for bit (checked in a unit test).
+- `ui-pager/PagerText.h` handles UTF-8 decoding, binary search over the codepoints and CP437 umlauts. U+FE0F, ZWJ and skin tones take no width. `UITask` now draws through one path (`pagerNextCell` / `drawCell`) instead of three copies of the phone special case.
+- Tests: `test/test_pager_text` (6 tests). All 56 native tests pass, and the firmware builds (flash +1.5 KB, RAM unchanged).
+- Example [docs/pager_setup_kids.yaml](docs/pager_setup_kids.yaml) with 8 questions for children. The frontend docs now point to the supported set and suggest a matching emoji picker.
+
+**Decisions**
+- Chose a fixed, curated set rather than a full emoji font. 8×8 only works for simple, clear shapes, and flash/RAM stay small.
+- The pictures were chosen for children: yes/no, feelings, places, ways to travel, needs (eating, drinking, toilet, hurt, help), time.
+
+**Open:** device test ([checklist M4c](docs/pager_testing.md)). Some 8×8 pictures (bicycle, toilet) are only just recognizable at that size and should be checked on the real display.
+
+---
+
+## 2026-09-26 — M4b device test: setup over BLE (FRD-021)
+
+**Setup:** two Heltec V4 flashed with `heltec_v4_pager-v0.4.1-m4b-35aeeb8c-merged.bin` (esptool, `0x0`, no erase). Before the test they were running as `Bob` and `Eve`, both with channel `Pager` and the build key. Setup files: `a.yaml` (Anna) and `bob.yaml` (Bob), both with the same group (`Familie`, a new random key, 3 questions from `docs/pager_setup_example.yaml`). Uploaded with `bin/pager_setup.py` (bleak) from Ubuntu/BlueZ.
+
+**Results (checklist M4b)**
+
+| Step | Result |
+|---|---|
+| 1–2 scan, upload `a.yaml` | ✅ `nickname=Anna channel=Familie key=setup questions=3` |
+| 3–4 popup, header, status | ✅ |
+| 5 second pager `bob.yaml` | ✅ `nickname=Bob channel=Familie key=setup questions=3` (before: `Eve`/`Pager`/`build`) |
+| 6 send menu `1/6`, no duplicate `Angekommen?` | ✅ |
+| 7 reply menu for `Wann kommst du?` = `5 min`, `30 min`, `Später`, 📞 | ✅ |
+| 8 reply `Später` arrives as `»Bob: @Anna Später`, `ä` rendered correctly | ✅ |
+| 9 `Angekommen?` → replies from the setup (`Ja`, `Noch nicht`, `Mein Standort`) | ✅ |
+| 10 other message → default replies | ✅ |
+| 11–12 invalid files: `:2: unknown key 'nicknme'`, `:3: more than 6 replies`, `:2: question text longer than 40 bytes`. Afterwards the status was unchanged | ✅ |
+| 13 reboot (reset over USB): setup kept, BLE name changes to `MeshCore-Anna` | ✅ |
+| 16 `clear`: `channel=Pager key=build questions=0`, nickname stays | ✅ (then `a.yaml` uploaded again) |
+| 14 name from the app reset at boot, 15 upload while a picker is open, 17 stock app afterwards | not tested |
+
+**Pitfalls found (setup, not firmware)**
+- **Serial port:** the user isn't in `dialout`, so esptool fails with "Permission denied" / "port doesn't exist". Fix: install the PlatformIO udev rules (or `chmod` once). `pio run -t upload` also loses the port after the 1200-bps reset. Flashing directly with esptool (`write_flash 0x0 …-merged.bin`) works.
+- **BLE pairing from Linux:** after `bluetoothctl pair`, BlueZ stays connected. The pager then stops advertising, and bleak reports "device not found". Always run `bluetoothctl disconnect <addr>` after pairing.
+- On the first attempt, the pager dropped every connection after about 2 s (authentication failure, the pager had lost the bond). `remove` + pairing again fixed it. The cause wasn't pinned down; it's likely a reset during or after pairing.
+
+**Status:** FRD-021 works on the device. Still open: steps 14, 15, 17.
+
+---
+
 ## 2026-09-26 — Setup over BLE: YAML with nickname, channel, questions (FRD-021)
 
 **Request:** a setup frontend creates a YAML file and uploads it over Bluetooth to pagers that are already flashed. It controls the channel key, the names, and extra questions with their own reply sets, on top of the built-in canned messages.

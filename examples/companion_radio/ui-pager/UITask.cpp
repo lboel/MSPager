@@ -35,13 +35,7 @@ static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93
 static_assert(NUM_COMPOSE + PAGER_CFG_MAX_QUESTIONS <= PAGER_MAX_OPTIONS && NUM_REPLY <= PAGER_MAX_OPTIONS
               && PAGER_CFG_MAX_REPLIES <= PAGER_MAX_OPTIONS, "PAGER_MAX_OPTIONS too small");
 
-// U+1F4DE TELEPHONE RECEIVER, drawn as 8x8 glyph (FRD-013)
-static const char PHONE_UTF8[] = "\xF0\x9F\x93\x9E";
-// old-style desk phone (handset on top, body with dial) - more recognizable than a lone receiver
-static const uint8_t phone_glyph[8] = { 0x7E, 0xC3, 0x00, 0x3C, 0x7E, 0x66, 0x7E, 0x00 };
-static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pixel-doubled)
-  0x00,0x00, 0x3F,0xFC, 0x7F,0xFE, 0xF0,0x0F, 0xF0,0x0F, 0x00,0x00, 0x07,0xE0, 0x0C,0x30,
-  0x1B,0xD8, 0x32,0x4C, 0x63,0xC6, 0x60,0x06, 0x7F,0xFE, 0x7F,0xFE, 0x00,0x00, 0x00,0x00 };
+// 📞 and the other emoji are drawn as glyphs: PagerText.h / EmojiGlyphs.h (FRD-013, FRD-022)
 
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
@@ -69,31 +63,26 @@ static const uint8_t gps_nofix_icon[8] = { 0x3D, 0x42, 0x85, 0x89, 0x52, 0x24, 0
 #define ARROW_UP     "\x18"
 #define ARROW_DOWN   "\x19"
 #define ARROW_LEFT   "\x1B"
-#define IS_ARROW(c)  ((c) >= 0x18 && (c) <= 0x1B)
 
 // Per-cell advance. Size 2 uses 11px instead of GFX's 12px (10px glyph + 1px gap),
 // so 11 chars fit the 128px width and "Angekommen?" stays on one line.
 static int cellW(int sz)  { return sz == 2 ? 11 : CHAR_W; }
-static int glyphW(int sz) { return sz == 2 ? 17 : 9; }      // phone glyph + 1px gap
+static int glyphW(int sz) { return sz == 2 ? 17 : 9; }      // emoji glyph + 1px gap
 
-// UTF-8 codepoint (lead byte already read, p on the continuation bytes) -> CP437 cell.
-// German letters are mapped, anything else becomes a full block.
-static unsigned char toCp437(unsigned char lead, const char*& p) {
-  unsigned int cp = 0;
-  if ((lead & 0xE0) == 0xC0 && (*p & 0xC0) == 0x80) cp = ((lead & 0x1F) << 6) | (*p & 0x3F);
-  while ((*p & 0xC0) == 0x80) p++;
-  switch (cp) {
-    case 0xE4: return 0x84;   // ä
-    case 0xF6: return 0x94;   // ö
-    case 0xFC: return 0x81;   // ü
-    case 0xC4: return 0x8E;   // Ä
-    case 0xD6: return 0x99;   // Ö
-    case 0xDC: return 0x9A;   // Ü
-    case 0xDF: return 0xE1;   // ß
-    case 0xE9: return 0x82;   // é
-    case 0xB0: return 0xF8;   // °
+// advance of one cell from pagerNextCell()
+static int cellAdvance(int glyph, unsigned char c, int sz) {
+  return glyph >= 0 ? glyphW(sz) : (c ? cellW(sz) : 0);
+}
+
+static void drawCell(DisplayDriver* display, int x, int y, int glyph, unsigned char c, int sz) {
+  if (glyph >= 0) {
+    if (sz == 2) display->drawXbm(x, y, EMOJI_LARGE[glyph], 16, 16);
+    else         display->drawXbm(x, y, EMOJI_SMALL[glyph], 8, 8);
+  } else if (c) {
+    char ch[2] = { (char)c, 0 };
+    display->setCursor(x, y);
+    display->print(ch);
   }
-  return 0xDB;                // full block
 }
 
 // "@[Anna] Ja" -> "@Anna Ja"
@@ -587,47 +576,28 @@ void UITask::renderPairing() {
 int UITask::textWidth(const char* str, int sz) {
   int w = 0;
   for (const char* p = str; *p; ) {
-    if (strncmp(p, PHONE_UTF8, 4) == 0) {
-      w += glyphW(sz);
-      p += 4;
-    } else {
-      w += cellW(sz);
-      p++;
-      while ((*p & 0xC0) == 0x80) p++;  // one cell per UTF-8 codepoint
-    }
+    unsigned char c;
+    int glyph = pagerNextCell(p, c);
+    w += cellAdvance(glyph, c, sz);
   }
   return w;
 }
 
-// Draws text at size 1 or 2 with the phone glyph inline; other non-ASCII codepoints become a block.
+// Draws text at size 1 or 2 with emoji glyphs inline; unknown non-ASCII codepoints become a block.
 // Truncates with "..." if wider than max_w.
 void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
   bool truncate = textWidth(str, sz) > max_w;
   int limit = truncate ? max_w - 3 * cellW(sz) : max_w;
   int cx = x;
-  char ch[2] = { 0, 0 };
 
   _display->setTextSize(sz);
   for (const char* p = str; *p; ) {
-    if (strncmp(p, PHONE_UTF8, 4) == 0) {
-      if (cx + glyphW(sz) - x > limit) break;
-      if (sz == 2) _display->drawXbm(cx, y, phone_glyph_2x, 16, 16);
-      else         _display->drawXbm(cx, y, phone_glyph, 8, 8);
-      cx += glyphW(sz);
-      p += 4;
-      continue;
-    }
-    if (cx + cellW(sz) - x > limit) break;
-    unsigned char c = (unsigned char)*p++;
-    if (c >= 0x80) {
-      c = toCp437(c, p);
-    } else if (c < 32 && !IS_ARROW(c)) {
-      c = ' ';
-    }
-    ch[0] = (char)c;
-    _display->setCursor(cx, y);
-    _display->print(ch);
-    cx += cellW(sz);
+    unsigned char c;
+    int glyph = pagerNextCell(p, c);
+    int w = cellAdvance(glyph, c, sz);
+    if (cx + w - x > limit) break;
+    drawCell(_display, cx, y, glyph, c, sz);
+    cx += w;
   }
   for (int i = 0; truncate && i < 3; i++) {
     _display->setCursor(cx, y);
@@ -640,30 +610,13 @@ void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
 // Draws the whole string from x (may be negative), no truncation; off-screen cells are skipped.
 void UITask::renderTextRaw(int x, int y, const char* str, int sz) {
   int cx = x;
-  char ch[2] = { 0, 0 };
   _display->setTextSize(sz);
   for (const char* p = str; *p && cx < _display->width(); ) {
-    if (strncmp(p, PHONE_UTF8, 4) == 0) {
-      if (cx + glyphW(sz) > 0) {
-        if (sz == 2) _display->drawXbm(cx, y, phone_glyph_2x, 16, 16);
-        else         _display->drawXbm(cx, y, phone_glyph, 8, 8);
-      }
-      cx += glyphW(sz);
-      p += 4;
-      continue;
-    }
-    unsigned char c = (unsigned char)*p++;
-    if (c >= 0x80) {
-      c = toCp437(c, p);
-    } else if (c < 32 && !IS_ARROW(c)) {
-      c = ' ';
-    }
-    if (cx + cellW(sz) > 0) {
-      ch[0] = (char)c;
-      _display->setCursor(cx, y);
-      _display->print(ch);
-    }
-    cx += cellW(sz);
+    unsigned char c;
+    int glyph = pagerNextCell(p, c);
+    int w = cellAdvance(glyph, c, sz);
+    if (cx + w > 0) drawCell(_display, cx, y, glyph, c, sz);
+    cx += w;
   }
   _display->setTextSize(1);
 }

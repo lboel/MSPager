@@ -15,6 +15,7 @@
 #include "../NodePrefs.h"
 #include "PagerLocation.h"
 #include "PagerConfig.h"
+#include "PagerText.h"
 
 #ifdef PIN_BUZZER
   #include <helpers/ui/buzzer.h>
