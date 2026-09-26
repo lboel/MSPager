@@ -228,3 +228,32 @@ Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, differ
 ### Phone icon (FRD-013)
 - [ ] 9. The `📞` reply shows as a **desk phone** (handset on top, body with dial) in the chat list (small) and in the selected block / detail (large).
 - [ ] 10. The MeshCore app still shows the real 📞 emoji.
+
+---
+
+## M4b — Setup over BLE (FRD-021, two pagers + a computer with Bluetooth)
+
+Tool: `pip install bleak`, then `bin/pager_setup.py` (or the setup frontend). Setup files: copy [pager_setup_example.yaml](pager_setup_example.yaml) to `a.yaml` / `b.yaml` and change only `nickname` (A = `Anna`, B = `Ben`). Put in a **new** key (`openssl rand -hex 16`).
+
+### Upload
+- [ ] 1. `bin/pager_setup.py scan` lists both pagers (`MeshCore-…`).
+- [ ] 2. `upload <A> a.yaml`: the PIN prompt appears (PIN from the boot screen or 10 s hold). The output is `nickname=Anna channel=Familie key=setup questions=3`.
+- [ ] 3. A wakes and shows `Setup updated`. The header shows `Anna`.
+- [ ] 4. `status <A>` shows the same summary. The MeshCore app shows the channel `Familie`, and the old `Pager` channel is gone.
+- [ ] 5. Same for B with `b.yaml`.
+
+### Questions & replies
+- [ ] 6. A: hold → the send menu shows the 4 built-in starters, then `Wann kommst du?` and `Essen ist fertig` (6 entries, the counter shows `n/6`). `Angekommen?` is **not** listed twice.
+- [ ] 7. A sends `Wann kommst du?`. B receives it. B: select → detail → hold: the reply menu shows exactly `5 min`, `30 min`, `Später`, 📞.
+- [ ] 8. B replies `Später`. A shows `»Ben: @Anna Später`, and `ä` renders as a real ä (not a block).
+- [ ] 9. A sends `Angekommen?`. B's reply menu shows `Ja`, `Noch nicht`, `Mein Standort` (replies replaced by the setup).
+- [ ] 10. A reply to a message that isn't a setup question (e.g. `Brauche Hilfe`, or free text from the app) offers the default replies `Ja`, `Nein`, `OK`, 📞, `Standort?`, `Mein Standort`.
+
+### Validation & persistence
+- [ ] 11. Upload a file with a typo (`nicknme: Anna`): the tool prints `<file>:<line>: unknown key 'nicknme'`. Nothing changes on the pager (no popup, same name).
+- [ ] 12. Upload a file with a 7th reply or a 41-byte text: rejected with the line number.
+- [ ] 13. Press RST: the setup is still active (name, channel, questions).
+- [ ] 14. Rename A in the MeshCore app, then press RST: the name is `Anna` again.
+- [ ] 15. Upload while the send menu is open on the pager: the pager goes back to chat and shows `Setup updated`.
+- [ ] 16. `clear <A>`: the channel is back to `Pager` with the `pager.secret.ini` key, and the send menu shows only the 4 built-in starters. The nickname stays `Anna`.
+- [ ] 17. The stock MeshCore app still works normally after all of this (channel list, messages).

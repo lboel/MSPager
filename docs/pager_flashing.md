@@ -118,6 +118,8 @@ esptool.py --chip esp32s3 -p <PORT> write_flash 0x10000 heltec_v4_pager-<version
 
 All pagers in a group need the **same radio preset** and the **same `Pager` channel with the same key**. Only the nickname differs.
 
+> **Alternative: setup file over Bluetooth.** Instead of 5.2–5.4 you can upload a YAML setup with the nickname, group channel/key and extra questions with their own replies. Use the setup frontend or `bin/pager_setup.py upload <address> setup.yaml` (see [pager_config_protocol.md](pager_config_protocol.md) and the [example](pager_setup_example.yaml)). This works on any flashed pager without rebuilding. The compiled-in key is then only a fallback. The setup overrides `pager.ini`/`pager.secret.ini` and is enforced at every boot.
+
 ### 5.1 Connect
 1. Open the MeshCore app and connect to the device over Bluetooth (it shows up as `MeshCore-…`).
 2. Enter the **PIN shown on the pager's OLED**. It's shown on the boot screen for the first 5 s. Later, **hold PRG for 10 s** (pairing mode) to show it in large digits.

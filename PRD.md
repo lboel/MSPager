@@ -29,7 +29,7 @@ Cellular coverage is unreliable in the places the group moves (outdoors, events,
 - **Canned messages only**. Two can start a conversation, four are replies (see §7).
 - **Automatic GPS position** attached to every sent message, at about 10 m precision.
 - **Single-button operation** using the PRG button.
-- One-time configuration (nickname, channel, radio preset) with the stock **MeshCore smartphone app over BLE**.
+- One-time configuration (nickname, channel, radio preset) with the stock **MeshCore smartphone app over BLE**, or with a **setup YAML** uploaded over BLE by a setup frontend (nickname, channel name/key, extra questions with their own replies, [FRD-021](frd/FRD-021-ble-setup-yaml.md)).
 
 ### Out of scope (non-goals)
 - Free-text input on the device.
@@ -69,6 +69,7 @@ So the whole UI runs on **one button** with three gestures: **short press**, **l
 | US-7 | device admin | flash one firmware and set nickname/channel via the MeshCore app | setting up a new pager takes minutes |
 | US-9 | pager user | ask "where are you?" and get the others' positions automatically | I can find the group without anyone pressing a button |
 | US-8 | device admin | have stock MeshCore app users in the same channel read pager messages | a phone user can join the group |
+| US-10 | device admin | set up flashed pagers from a frontend with one YAML file each (nickname, group channel, our own questions and replies) | a group gets its own messages without rebuilding the firmware |
 
 ## 7. Canned message catalogue
 
@@ -83,6 +84,8 @@ So the whole UI runs on **one button** with three gestures: **short press**, **l
 | Start + reply | `Standort?` | location request: other pagers **answer automatically** with `Mein Standort` ([FRD-019](frd/FRD-019-location-messages.md)) |
 | Start + reply | `Mein Standort` | share location: receivers see distance + direction, e.g. `Mein Standort 1.2km NE` |
 
+**Extra questions** can be added per group with the setup YAML ([FRD-021](frd/FRD-021-ble-setup-yaml.md)), each with its own 1–6 replies. They appear after the built-in starters. The built-in texts can get their own replies too.
+
 Replies carry a mention of the original sender, e.g. `@[Anna] Ja` ([FRD-007](frd/FRD-007-replies-with-mention.md)). Every message ends with a position suffix, e.g. `[52.5201,13.4050]` ([FRD-010](frd/FRD-010-gps-attachment.md)).
 
 ## 8. Key product decisions
@@ -90,13 +93,13 @@ Replies carry a mention of the original sender, e.g. `@[Anna] Ja` ([FRD-007](frd
 | Topic | Decision | Rationale |
 |---|---|---|
 | Firmware base | Fork of the MeshCore **companion radio** firmware with a new pager UI | Reuses channel crypto, BLE app config and GPS support |
-| Configuration | Nickname via the stock MeshCore app over **BLE, always on**. Channel and radio come from `pager.ini` | Only the nickname differs per pager |
+| Configuration | Nickname via the stock MeshCore app over **BLE, always on**. Channel and radio come from `pager.ini`. A **setup YAML** over BLE (FRD-021) overrides nickname and channel and adds questions | Only the nickname differs per pager. The setup lets a frontend configure flashed pagers without a rebuild |
 | Pager channel & radio | Name and radio settings (EU/UK Narrow) in git-tracked **`pager.ini`**, key in gitignored **`pager.secret.ini`**, enforced at every boot | All pagers meet in the same channel right after flashing. The key stays out of the public repo |
 | Message format | **Plain text** incl. position suffix | Readable in stock MeshCore apps (US-8) |
 | Position precision | **4 decimals (≈10 m max)** | Enough to find someone, limits exposure of exact location |
 | No GPS fix | Send last known position + age, or `[no GPS]` | **Never block sending**, especially "Brauche Hilfe" |
 | Display | **Off when idle**. The first press only wakes it | Battery, and no accidental sends |
-| Alerting | Display wakes + LED blinks until read | No buzzer/vibration on the stock board |
+| Alerting | Display wakes + LED blinks until read, optional speaker beep ([FRD-020](frd/FRD-020-message-beep.md)) | No buzzer/vibration on the stock board |
 | Language | UI and docs in English, canned messages in German | Group language vs. maintainability |
 
 ## 9. Non-functional requirements

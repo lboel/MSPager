@@ -63,6 +63,21 @@
 #define CMD_GET_DEFAULT_FLOOD_SCOPE   64
 #define CMD_SEND_RAW_PACKET           65
 
+#ifdef PAGER_CHANNEL_NAME
+// MSPager setup upload (FRD-021, docs/pager_config_protocol.md). Not part of upstream MeshCore.
+#define CMD_PAGER_CONFIG              0x70
+#define RESP_CODE_PAGER_CONFIG        0x70
+#define PAGER_CFG_OP_BEGIN            1   // uint16 total YAML length
+#define PAGER_CFG_OP_DATA             2   // uint16 offset, YAML bytes
+#define PAGER_CFG_OP_COMMIT           3   // parse, store, apply
+#define PAGER_CFG_OP_STATUS           4   // summary of the active setup
+#define PAGER_CFG_OP_CLEAR            5   // back to pager.ini
+#define PAGER_CFG_RESULT_OK           0
+#define PAGER_CFG_RESULT_INVALID      1
+#define PAGER_CFG_RESULT_IO_ERROR     2
+#define PAGER_CFG_FILE                "/pager_cfg"
+#endif
+
 // Stats sub-types for CMD_GET_STATS
 #define STATS_TYPE_CORE               0
 #define STATS_TYPE_RADIO              1
@@ -598,7 +613,7 @@ void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packe
     channel_name = channel_details.name;
   }
 #ifdef PAGER_CHANNEL_NAME
-  if (strcmp(channel_name, PAGER_CHANNEL_NAME) != 0) return;  // other channels: app only (FRD-008)
+  if (strcmp(channel_name, getPagerChannelName()) != 0) return;  // other channels: app only (FRD-008)
 #endif
   if (_ui) _ui->newMsg(path_len, channel_name, text, offline_queue_len);
 #endif
@@ -988,6 +1003,10 @@ void MyMesh::begin(bool has_display) {
   addChannel("Public", PUBLIC_GROUP_PSK); // pre-configure Andy's public channel
   _store->loadChannels(this);
 #ifdef PAGER_CHANNEL_NAME
+  loadPagerConfig();   // setup from BLE overrides pager.ini (FRD-021), enforced at every boot
+  if (_pager_cfg.flags & PAGER_CFG_HAS_NICKNAME) {
+    StrHelper::strncpy(_prefs.node_name, _pager_cfg.nickname, sizeof(_prefs.node_name));
+  }
   ensurePagerChannel();
 #endif
 #ifdef PAGER_CHANNEL_NAME
@@ -1014,29 +1033,36 @@ void MyMesh::begin(bool has_display) {
 
 #ifdef PAGER_CHANNEL_NAME
 int MyMesh::findPagerChannel() {
+  const char* name = getPagerChannelName();
   ChannelDetails ch;
   for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
-    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) return i;
+    if (strcmp(ch.name, name) == 0) return i;
   }
   return -1;
 }
 
-// Enforce the group channel from pager.ini at every boot (FRD-008): exactly one
-// channel named PAGER_CHANNEL_NAME, holding PAGER_CHANNEL_KEY. Duplicates are removed.
+// Enforce the group channel at every boot (FRD-008): exactly one channel named
+// getPagerChannelName(), holding the key from the BLE setup (FRD-021) or else
+// PAGER_CHANNEL_KEY from pager.ini. Duplicates are removed.
 static_assert(sizeof(PAGER_CHANNEL_KEY) == 33, "channel key missing or invalid: create pager.secret.ini from pager.secret.ini.example (32 hex characters)");
 
 void MyMesh::ensurePagerChannel() {
   uint8_t key[16];
-  for (const char* p = PAGER_CHANNEL_KEY; *p; p++) {
-    if (!mesh::Utils::isHexChar(*p)) return;   // invalid key: leave channels untouched, UI shows "No channel"
+  if (_pager_cfg.flags & PAGER_CFG_HAS_KEY) {
+    memcpy(key, _pager_cfg.channel_key, sizeof(key));
+  } else {
+    for (const char* p = PAGER_CHANNEL_KEY; *p; p++) {
+      if (!mesh::Utils::isHexChar(*p)) return;   // invalid key: leave channels untouched, UI shows "No channel"
+    }
+    mesh::Utils::fromHex(key, sizeof(key), PAGER_CHANNEL_KEY);
   }
-  mesh::Utils::fromHex(key, sizeof(key), PAGER_CHANNEL_KEY);
+  const char* name = getPagerChannelName();
 
   bool changed = false, found = false;
   int free_slot = -1;
   ChannelDetails ch;
   for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
-    if (strcmp(ch.name, PAGER_CHANNEL_NAME) == 0) {
+    if (strcmp(ch.name, name) == 0) {
       if (found) {                       // duplicate (e.g. an older QR import) -> free the slot
         memset(&ch, 0, sizeof(ch));
         setChannel(i, ch);
@@ -1057,7 +1083,7 @@ void MyMesh::ensurePagerChannel() {
   }
   if (!found && free_slot >= 0) {
     memset(&ch, 0, sizeof(ch));
-    StrHelper::strncpy(ch.name, PAGER_CHANNEL_NAME, sizeof(ch.name));
+    StrHelper::strncpy(ch.name, name, sizeof(ch.name));
     memcpy(ch.channel.secret, key, 16);
     setChannel(free_slot, ch);
     changed = true;
@@ -1078,6 +1104,132 @@ bool MyMesh::sendPagerMessage(const char* text) {
   snprintf(echo, sizeof(echo), "%s: %s", _prefs.node_name, text);
   queueChannelMsgForApp(idx, 0, 0, ts, echo);
   return true;
+}
+
+// ---- setup upload over BLE (FRD-021)
+
+static char pager_yaml[PAGER_CFG_YAML_MAX + 1];      // upload buffer
+static uint16_t pager_yaml_total, pager_yaml_len;    // total 0 = no upload in progress
+static PagerConfig pager_cfg_new;                    // too big for the loop stack
+static uint8_t pager_cfg_blob[PAGER_CFG_BLOB_MAX];
+
+void MyMesh::loadPagerConfig() {
+  pagerCfgClear(_pager_cfg);
+  File file = _store->openRead(PAGER_CFG_FILE);
+  if (!file) return;
+  int n = file.read(pager_cfg_blob, sizeof(pager_cfg_blob));
+  file.close();
+  if (!pagerCfgDeserialize(pager_cfg_blob, n, _pager_cfg)) {
+    MESH_DEBUG_PRINTLN("pager setup: invalid %s, using pager.ini", PAGER_CFG_FILE);
+  }
+}
+
+bool MyMesh::savePagerConfig(const PagerConfig& cfg) {
+  int n = pagerCfgSerialize(cfg, pager_cfg_blob, sizeof(pager_cfg_blob));
+  if (n <= 0) return false;
+  File file = _store->getPrimaryFS()->open(PAGER_CFG_FILE, "w", true);   // pager env is ESP32-only
+  if (!file) return false;
+  bool ok = file.write(pager_cfg_blob, n) == (size_t)n;
+  file.close();
+  return ok;
+}
+
+// takes over a new setup right away: nickname, channel (a renamed one is removed), questions
+void MyMesh::applyPagerConfig(const PagerConfig& cfg) {
+  char old_name[32];
+  StrHelper::strncpy(old_name, getPagerChannelName(), sizeof(old_name));
+  _pager_cfg = cfg;
+  _pager_cfg_gen++;
+
+  if ((cfg.flags & PAGER_CFG_HAS_NICKNAME) && strcmp(_prefs.node_name, cfg.nickname) != 0) {
+    StrHelper::strncpy(_prefs.node_name, cfg.nickname, sizeof(_prefs.node_name));
+    savePrefs();   // BLE advertises the new name after the next reboot
+  }
+  if (strcmp(old_name, getPagerChannelName()) != 0) {
+    ChannelDetails ch;
+    for (int i = 0; i < MAX_GROUP_CHANNELS && getChannel(i, ch); i++) {
+      if (strcmp(ch.name, old_name) == 0) {
+        memset(&ch, 0, sizeof(ch));
+        setChannel(i, ch);
+      }
+    }
+    saveChannels();
+  }
+  ensurePagerChannel();
+}
+
+// RESP_CODE_PAGER_CONFIG, status, line (uint16 LE), message (UTF-8, rest of the frame).
+// Without msg, the message summarises the active setup.
+void MyMesh::writePagerConfigResult(uint8_t status, int line, const char* msg) {
+  char summary[128];
+  if (msg == NULL) {
+    snprintf(summary, sizeof(summary), "nickname=%s channel=%s key=%s questions=%d", _prefs.node_name,
+             getPagerChannelName(), (_pager_cfg.flags & PAGER_CFG_HAS_KEY) ? "setup" : "build",
+             _pager_cfg.num_questions);
+    msg = summary;
+  }
+  int i = 0;
+  out_frame[i++] = RESP_CODE_PAGER_CONFIG;
+  out_frame[i++] = status;
+  uint16_t line16 = line;
+  memcpy(&out_frame[i], &line16, 2);
+  i += 2;
+  int n = strlen(msg);
+  if (n > MAX_FRAME_SIZE - i) n = MAX_FRAME_SIZE - i;
+  memcpy(&out_frame[i], msg, n);
+  i += n;
+  _serial->writeFrame(out_frame, i);
+}
+
+void MyMesh::handlePagerConfigCmd(size_t len) {
+  uint8_t op = cmd_frame[1];
+  if (op == PAGER_CFG_OP_BEGIN && len >= 4) {
+    uint16_t total;
+    memcpy(&total, &cmd_frame[2], 2);
+    pager_yaml_len = 0;
+    if (total == 0 || total > PAGER_CFG_YAML_MAX) {
+      pager_yaml_total = 0;
+      writeErrFrame(ERR_CODE_ILLEGAL_ARG);
+    } else {
+      pager_yaml_total = total;
+      writeOKFrame();
+    }
+  } else if (op == PAGER_CFG_OP_DATA && len >= 5) {
+    uint16_t offset;
+    memcpy(&offset, &cmd_frame[2], 2);
+    size_t n = len - 4;
+    if (pager_yaml_total == 0 || offset != pager_yaml_len || pager_yaml_len + n > pager_yaml_total) {
+      writeErrFrame(ERR_CODE_BAD_STATE);
+    } else {
+      memcpy(&pager_yaml[pager_yaml_len], &cmd_frame[4], n);
+      pager_yaml_len += n;
+      writeOKFrame();
+    }
+  } else if (op == PAGER_CFG_OP_COMMIT) {
+    if (pager_yaml_total == 0 || pager_yaml_len != pager_yaml_total) {
+      writeErrFrame(ERR_CODE_BAD_STATE);
+      return;
+    }
+    pager_yaml_total = 0;   // consumed, the next upload starts with BEGIN
+    PagerCfgError err;
+    if (!pagerCfgParseYaml(pager_yaml, pager_yaml_len, pager_cfg_new, err)) {
+      writePagerConfigResult(PAGER_CFG_RESULT_INVALID, err.line, err.msg);
+    } else if (!savePagerConfig(pager_cfg_new)) {
+      writePagerConfigResult(PAGER_CFG_RESULT_IO_ERROR, 0, "flash write failed");
+    } else {
+      applyPagerConfig(pager_cfg_new);
+      writePagerConfigResult(PAGER_CFG_RESULT_OK, 0, NULL);
+    }
+  } else if (op == PAGER_CFG_OP_STATUS) {
+    writePagerConfigResult(PAGER_CFG_RESULT_OK, 0, NULL);
+  } else if (op == PAGER_CFG_OP_CLEAR) {
+    _store->removeFile(PAGER_CFG_FILE);
+    pagerCfgClear(pager_cfg_new);
+    applyPagerConfig(pager_cfg_new);
+    writePagerConfigResult(PAGER_CFG_RESULT_OK, 0, NULL);
+  } else {
+    writeErrFrame(ERR_CODE_ILLEGAL_ARG);
+  }
 }
 #endif
 
@@ -1244,7 +1396,7 @@ void MyMesh::handleCmdFrame(size_t len) {
       if (success && sendGroupMessage(msg_timestamp, channel.channel, _prefs.node_name, text, len - i)) {
         writeOKFrame();
 #if defined(PAGER_CHANNEL_NAME) && defined(DISPLAY_CLASS)
-        if (_ui && strcmp(channel.name, PAGER_CHANNEL_NAME) == 0) {  // show app-sent message on the pager as own
+        if (_ui && strcmp(channel.name, getPagerChannelName()) == 0) {  // show app-sent message on the pager as own
           char echo[32 + 2 + MAX_TEXT_LEN + 1];
           snprintf(echo, sizeof(echo), "%s: %.*s", _prefs.node_name, len - i, text);
           _ui->newMsg(0, channel.name, echo, offline_queue_len);
@@ -2099,6 +2251,10 @@ void MyMesh::handleCmdFrame(size_t len) {
       memcpy(&out_frame[i], &r->upper_freq, 4); i += 4;
     }
     _serial->writeFrame(out_frame, i);
+#ifdef PAGER_CHANNEL_NAME
+  } else if (cmd_frame[0] == CMD_PAGER_CONFIG && len >= 2) {
+    handlePagerConfigCmd(len);
+#endif
   } else if (cmd_frame[0] == CMD_SEND_RAW_PACKET && len >= 4) {
     auto pkt = obtainNewPacket();
     if (pkt) {

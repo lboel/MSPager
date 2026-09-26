@@ -14,6 +14,7 @@
 #include "../AbstractUITask.h"
 #include "../NodePrefs.h"
 #include "PagerLocation.h"
+#include "PagerConfig.h"
 
 #ifdef PIN_BUZZER
   #include <helpers/ui/buzzer.h>
@@ -33,6 +34,8 @@
 #ifndef PAGER_PAIRING_SECS
   #define PAGER_PAIRING_SECS  30
 #endif
+
+#define PAGER_MAX_OPTIONS  (8 + PAGER_CFG_MAX_QUESTIONS)   // compose/reply picker entries
 
 #ifndef PAGER_INBOX_SIZE
   #define PAGER_INBOX_SIZE  16
@@ -67,6 +70,13 @@ private:
   int _inbox_head, _inbox_count;
   int _sel;       // selected message index (chronological), -1 = none
   int _option;    // current option in compose/reply picker
+
+  // picker options: built-in catalogue plus questions/replies from the BLE setup (FRD-006, FRD-021)
+  const char* _opts[PAGER_MAX_OPTIONS];
+  int _num_opts;
+  uint8_t _cfg_gen;   // last seen MyMesh::getPagerConfigGen()
+  void buildComposeOptions();
+  void buildReplyOptions();
 
   // BLE pairing mode (FRD-017)
   unsigned long _hold_start;      // PRG press start, 0 = released
@@ -153,7 +163,8 @@ public:
     _alert_expiry = 0;
     _inbox_head = _inbox_count = 0;
     _sel = -1;
-    _option = 0;
+    _option = _num_opts = 0;
+    _cfg_gen = 0;
     _hold_start = _pair_until = _pair_reenable_at = 0;
     _hold_fired = _pair_saw_idle = false;
     _scroll_start = 0;

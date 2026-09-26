@@ -25,6 +25,9 @@
 
 #include "DataStore.h"
 #include "NodePrefs.h"
+#ifdef PAGER_CHANNEL_NAME
+  #include "ui-pager/PagerConfig.h"
+#endif
 
 #include <RTClib.h>
 #include <helpers/ArduinoHelpers.h>
@@ -166,13 +169,25 @@ protected:
   }
 
 #ifdef PAGER_CHANNEL_NAME
+  PagerConfig _pager_cfg;   // setup uploaded over BLE, overrides pager.ini (FRD-021)
+  uint8_t _pager_cfg_gen = 0;
   void ensurePagerChannel();
+  void loadPagerConfig();
+  bool savePagerConfig(const PagerConfig& cfg);
+  void applyPagerConfig(const PagerConfig& cfg);
+  void handlePagerConfigCmd(size_t len);
+  void writePagerConfigResult(uint8_t status, int line, const char* msg);
 #endif
 
 public:
 #ifdef PAGER_CHANNEL_NAME
-  int findPagerChannel();                   // slot of the channel named PAGER_CHANNEL_NAME, or -1
+  int findPagerChannel();                   // slot of the pager channel (getPagerChannelName()), or -1
   bool sendPagerMessage(const char* text);  // sends "<node_name>: <text>" on the pager channel
+  const char* getPagerChannelName() const {
+    return (_pager_cfg.flags & PAGER_CFG_HAS_CHANNEL) ? _pager_cfg.channel_name : PAGER_CHANNEL_NAME;
+  }
+  const PagerConfig& getPagerConfig() const { return _pager_cfg; }
+  uint8_t getPagerConfigGen() const { return _pager_cfg_gen; }   // changes on every applied setup
 #endif
 
   void savePrefs() {

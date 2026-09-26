@@ -26,6 +26,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-018](frd/FRD-018-group-config-file.md) | Group config file `pager.ini` (channel name/key, EU radio) | M2 | Implemented |
 | [FRD-019](frd/FRD-019-location-messages.md) | Location messages `Standort?` (auto-answer) / `Mein Standort` | M3 | Implemented |
 | [FRD-020](frd/FRD-020-message-beep.md) | New-message beep, optional speaker on GPIO 4 (no resistor) | M4 | Implemented |
+| [FRD-021](frd/FRD-021-ble-setup-yaml.md) | Setup over BLE: YAML with nickname, channel, questions + own replies | M4b | Implemented |
 
 ## Adding an FRD
 1. Copy an existing file and take the next free number: `frd/FRD-NNN-<kebab-slug>.md`.

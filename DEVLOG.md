@@ -4,6 +4,33 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Setup over BLE: YAML with nickname, channel, questions (FRD-021)
+
+**Request:** a setup frontend creates a YAML file and uploads it over Bluetooth to pagers that are already flashed. It controls the channel key, the names, and extra questions with their own reply sets, on top of the built-in canned messages.
+
+**Decisions (with the user)**
+- "Name" means both the **nickname** (per pager) and the **channel name** (per group).
+- **Replies per question.** A receiver looks up the incoming text in its **own** setup, so all pagers of a group need the same `channel` + `questions`. Unknown texts get the default replies.
+- **The ESP parses the YAML** and stores it as a compact binary blob (`/pager_cfg`, the example is 162 bytes). It is not stored as YAML, and the frontend doesn't translate it into binary.
+- **The setup overrides the build config.** `pager.ini`/`pager.secret.ini` stay as they are (the build still requires the key) and serve as the fallback.
+
+**Done**
+- `ui-pager/PagerConfig.{h,cpp}`: a YAML-subset parser (block style, comments, quotes with `\x`/`\u`/`\U` escapes, flow lists, flow mapping for `channel`). It gives errors with line numbers, supports the PyYAML default output, has the flash format, and needs no Arduino, so there are native unit tests (`test/test_pager_config`, 10 tests).
+- Companion command `0x70` with BEGIN/DATA/COMMIT/STATUS/CLEAR, handled in `MyMesh::handlePagerConfigCmd()`. It uses a static 4 KB buffer and no heap. A COMMIT only saves and applies if validation passed. Protocol for the frontend: [docs/pager_config_protocol.md](docs/pager_config_protocol.md).
+- Every value is optional. Everything set is **enforced at every boot**. If the channel is renamed, the old pager channel is removed.
+- UI: the send menu shows the built-ins plus the setup questions (a built-in text only replaces the replies). The reply menu depends on the question. On a new setup the pager shows `Setup updated`, and open pickers go back to chat.
+- OLED: `äöüÄÖÜß é °` now come from the CP437 font instead of a block.
+- `bin/pager_setup.py` (bleak) is a reference client and test tool.
+- Build: RAM 8.3 % → 9.1 %. `heltec_v4_companion_radio_ble` still builds unchanged. All native tests pass.
+
+**Limits / open**
+- 12 questions, 6 replies each, 40 bytes per text (length budget FRD-012). The YAML can be at most 4 KB.
+- The BLE name (`MeshCore-<nick>`) only changes after a reboot.
+- The setup can't be read back as YAML yet (STATUS only gives a summary). Radio settings aren't part of the setup yet.
+- Not yet tested on a device ([checklist M4b](docs/pager_testing.md)).
+
+---
+
 ## 2026-09-26 — Message sound: two tones
 
 **Request:** just two consecutive sounds, the second slightly longer and lower.

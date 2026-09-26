@@ -32,6 +32,8 @@ static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93
 #define PICKER_ROWS  4
 #define NUM_COMPOSE  (int)(sizeof(COMPOSE_OPTIONS) / sizeof(COMPOSE_OPTIONS[0]))
 #define NUM_REPLY    (int)(sizeof(REPLY_OPTIONS) / sizeof(REPLY_OPTIONS[0]))
+static_assert(NUM_COMPOSE + PAGER_CFG_MAX_QUESTIONS <= PAGER_MAX_OPTIONS && NUM_REPLY <= PAGER_MAX_OPTIONS
+              && PAGER_CFG_MAX_REPLIES <= PAGER_MAX_OPTIONS, "PAGER_MAX_OPTIONS too small");
 
 // U+1F4DE TELEPHONE RECEIVER, drawn as 8x8 glyph (FRD-013)
 static const char PHONE_UTF8[] = "\xF0\x9F\x93\x9E";
@@ -73,6 +75,26 @@ static const uint8_t gps_nofix_icon[8] = { 0x3D, 0x42, 0x85, 0x89, 0x52, 0x24, 0
 // so 11 chars fit the 128px width and "Angekommen?" stays on one line.
 static int cellW(int sz)  { return sz == 2 ? 11 : CHAR_W; }
 static int glyphW(int sz) { return sz == 2 ? 17 : 9; }      // phone glyph + 1px gap
+
+// UTF-8 codepoint (lead byte already read, p on the continuation bytes) -> CP437 cell.
+// German letters are mapped, anything else becomes a full block.
+static unsigned char toCp437(unsigned char lead, const char*& p) {
+  unsigned int cp = 0;
+  if ((lead & 0xE0) == 0xC0 && (*p & 0xC0) == 0x80) cp = ((lead & 0x1F) << 6) | (*p & 0x3F);
+  while ((*p & 0xC0) == 0x80) p++;
+  switch (cp) {
+    case 0xE4: return 0x84;   // ä
+    case 0xF6: return 0x94;   // ö
+    case 0xFC: return 0x81;   // ü
+    case 0xC4: return 0x8E;   // Ä
+    case 0xD6: return 0x99;   // Ö
+    case 0xDC: return 0x9A;   // Ü
+    case 0xDF: return 0xE1;   // ß
+    case 0xE9: return 0x82;   // é
+    case 0xB0: return 0xF8;   // °
+  }
+  return 0xDB;                // full block
+}
 
 // "@[Anna] Ja" -> "@Anna Ja"
 static void compactMention(char* dest, size_t dest_size, const char* src) {
@@ -256,10 +278,8 @@ void UITask::handleShort() {
     case Screen::DETAIL:
       break;
     case Screen::COMPOSE:
-      _option = (_option + 1) % NUM_COMPOSE;
-      break;
     case Screen::REPLY:
-      _option = (_option + 1) % NUM_REPLY;
+      _option = (_option + 1) % _num_opts;
       break;
   }
 }
@@ -280,9 +300,12 @@ void UITask::handleLong() {
       _option = 0;
       if (_sel < 0) {
         if (the_mesh.findPagerChannel() < 0) {
-          showAlert("No '" PAGER_CHANNEL_NAME "' channel", 1500);
+          char tmp[48];
+          snprintf(tmp, sizeof(tmp), "No '%s' channel", the_mesh.getPagerChannelName());
+          showAlert(tmp, 1500);
           break;
         }
+        buildComposeOptions();
         setScreen(Screen::COMPOSE);
       } else {
         msgAt(_sel)->unread = false;
@@ -291,16 +314,17 @@ void UITask::handleLong() {
       break;
     case Screen::DETAIL:
       _option = 0;
+      buildReplyOptions();
       setScreen(Screen::REPLY);
       break;
     case Screen::COMPOSE:
-      sendCanned(COMPOSE_OPTIONS[_option], NULL);
+      sendCanned(_opts[_option], NULL);
       setScreen(Screen::CHAT);
       break;
     case Screen::REPLY: {
       PagerMsg* m = msgAt(_sel);
       const char* to = m == NULL ? NULL : (m->own ? _node_prefs->node_name : m->sender);
-      sendCanned(REPLY_OPTIONS[_option], to);
+      sendCanned(_opts[_option], to);
       _sel = -1;
       setScreen(Screen::CHAT);
       break;
@@ -330,6 +354,39 @@ void UITask::handleDouble() {
     case Screen::REPLY:
       setScreen(Screen::DETAIL);
       break;
+  }
+}
+
+// compose picker: built-in starters, then the questions from the setup (FRD-021).
+// A setup question with a built-in text only changes that question's replies.
+void UITask::buildComposeOptions() {
+  _num_opts = 0;
+  for (int i = 0; i < NUM_COMPOSE; i++) _opts[_num_opts++] = COMPOSE_OPTIONS[i];
+  const PagerConfig& cfg = the_mesh.getPagerConfig();
+  for (int i = 0; i < cfg.num_questions; i++) {
+    bool builtin = false;
+    for (int j = 0; j < NUM_COMPOSE; j++) builtin |= strcmp(cfg.questions[i].text, COMPOSE_OPTIONS[j]) == 0;
+    if (!builtin) _opts[_num_opts++] = cfg.questions[i].text;
+  }
+}
+
+// reply picker: the replies configured for the selected message's question, else the default set
+void UITask::buildReplyOptions() {
+  _num_opts = 0;
+  PagerMsg* m = msgAt(_sel);
+  const PagerQuestion* q = NULL;
+  if (m != NULL) {
+    const char* text = m->body;
+    if (text[0] == '@' && text[1] == '[') {   // "@[Anna] Wann kommst du?" -> "Wann kommst du?"
+      const char* end = strstr(text + 2, "] ");
+      if (end) text = end + 2;
+    }
+    q = pagerCfgFindQuestion(the_mesh.getPagerConfig(), text);
+  }
+  if (q != NULL) {
+    for (int i = 0; i < q->num_replies; i++) _opts[_num_opts++] = q->replies[i];
+  } else {
+    for (int i = 0; i < NUM_REPLY; i++) _opts[_num_opts++] = REPLY_OPTIONS[i];
   }
 }
 
@@ -563,8 +620,7 @@ void UITask::renderText(int x, int y, int max_w, const char* str, int sz) {
     if (cx + cellW(sz) - x > limit) break;
     unsigned char c = (unsigned char)*p++;
     if (c >= 0x80) {
-      c = 0xDB;  // CP437 full block
-      while ((*p & 0xC0) == 0x80) p++;
+      c = toCp437(c, p);
     } else if (c < 32 && !IS_ARROW(c)) {
       c = ' ';
     }
@@ -598,8 +654,7 @@ void UITask::renderTextRaw(int x, int y, const char* str, int sz) {
     }
     unsigned char c = (unsigned char)*p++;
     if (c >= 0x80) {
-      c = 0xDB;
-      while ((*p & 0xC0) == 0x80) p++;
+      c = toCp437(c, p);
     } else if (c < 32 && !IS_ARROW(c)) {
       c = ' ';
     }
@@ -685,7 +740,9 @@ void UITask::renderChat() {
 
   if (_inbox_count == 0) {
     if (the_mesh.findPagerChannel() < 0) {
-      _display->drawTextCentered(_display->width() / 2, 22, "No '" PAGER_CHANNEL_NAME "' channel");
+      char tmp[48];
+      snprintf(tmp, sizeof(tmp), "No '%s' channel", the_mesh.getPagerChannelName());
+      _display->drawTextCentered(_display->width() / 2, 22, tmp);
       _display->drawTextCentered(_display->width() / 2, 36, "Configure via app");
       renderHint("2x:off");
       return;
@@ -807,8 +864,8 @@ void UITask::renderDetail() {
 }
 
 void UITask::renderPicker(bool reply) {
-  const char* const* opts = reply ? REPLY_OPTIONS : COMPOSE_OPTIONS;
-  int n = reply ? NUM_REPLY : NUM_COMPOSE;
+  const char* const* opts = _opts;
+  int n = _num_opts;
 
   char title[48], count[8];
   if (reply) {
@@ -849,6 +906,16 @@ void UITask::loop() {
   updateFix();
   ledLoop();
   buzzerLoop();
+
+  if (the_mesh.getPagerConfigGen() != _cfg_gen) {   // new setup over BLE (FRD-021)
+    _cfg_gen = the_mesh.getPagerConfigGen();
+    if (_screen == Screen::COMPOSE || _screen == Screen::REPLY) {
+      _sel = -1;   // picker options pointed into the old setup
+      setScreen(Screen::CHAT);
+    }
+    showAlert("Setup updated", 1500);
+    wake();
+  }
 
   if (_auto_reply_at && millis() >= _auto_reply_at) {
     _auto_reply_at = 0;

@@ -1,0 +1,28 @@
+# MSPager setup (FRD-021), one file per pager. Uploaded over BLE by the setup
+# frontend or with bin/pager_setup.py. Everything is optional: missing values
+# keep the build config (pager.ini / pager.secret.ini).
+version: 1
+
+# per pager: sender name shown to the others (max 31 bytes, no ':' '[' ']')
+nickname: Anna
+
+# same for every pager of the group
+channel:
+  name: Familie                            # max 31 bytes, not "Public"
+  key: 8b3387e9c5cdea6ac9e5edbaa115cd72    # 32 hex characters, e.g. openssl rand -hex 16
+
+# extra questions, added after the built-in ones (Angekommen?, Brauche Hilfe,
+# Standort?, Mein Standort). Each brings its own replies. Every pager of the group
+# needs the same list, otherwise receivers offer the default replies
+# (Ja, Nein, OK, 📞, Standort?, Mein Standort).
+questions:
+  - text: Wann kommst du?
+    replies: ["5 min", "30 min", "Später", "📞"]
+  - text: Essen ist fertig
+    replies:
+      - Komme
+      - Später
+      - Ohne mich
+  # a built-in text only replaces that question's replies
+  - text: Angekommen?
+    replies: [Ja, Noch nicht, Mein Standort]
