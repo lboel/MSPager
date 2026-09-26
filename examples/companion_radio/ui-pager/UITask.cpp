@@ -44,11 +44,15 @@ static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pi
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
 
-// new-message sound (FRD-020): ICQ-style "uh-oh" - short high note, a fourth down, a little
-// slide at the end. Transposed into the ~2-3 kHz range where small speakers are loudest.
-// Alternative plain beep: "msg:d=8,o=7,b=200:g,16p,g,16p,g"
+// new-message sound (FRD-020): ICQ-style "uh-oh", modelled on the spoken intonation:
+//   "uh" - short, voice-like onset (grace note F#7 sliding up to G7, ~180 ms)
+//   gap  - ~60 ms
+//   "oh" - a fourth lower and twice as long (D7, 240 ms), falling away (C#7, C7, B6)
+// Transposed into the ~2-3 kHz range where small speakers are loudest. ~0.66 s total.
+// Alternatives: plain "uh-oh" "uhoh:d=16,o=7,b=140:8g,32p,8d,c#"
+//               triple beep "msg:d=8,o=7,b=200:g,16p,g,16p,g"
 #ifndef PAGER_BEEP_MELODY
-  #define PAGER_BEEP_MELODY  "uhoh:d=16,o=7,b=140:8g,32p,8d,c#"
+  #define PAGER_BEEP_MELODY  "uhoh:d=32,o=7,b=125:f#,16g,32p,8d,c#,c,b6"
 #endif
 #ifndef PAGER_BUZZER_DRIVE
   #define PAGER_BUZZER_DRIVE  1

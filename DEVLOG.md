@@ -4,6 +4,19 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — "uh-oh" closer to the original intonation
+
+**Request:** the classic melodic ICQ "oh oh".
+
+**Note:** the original is a voice sample. There are no official notes, and it can't be reproduced as speech on a square-wave speaker. The melody now follows the **spoken intonation** instead of two flat notes:
+- "uh": short, with a grace note sliding up (F#7→G7, ~180 ms)
+- ~60 ms gap
+- "oh": a fourth lower and twice as long (D7, 240 ms), falling away in steps (C#7, C7, B6)
+
+It's about 0.66 s in total. Melody: `uhoh:d=32,o=7,b=125:f#,16g,32p,8d,c#,c,b6`. It's tunable on the device (tempo/pitch/lengths) based on the user's ear.
+
+---
+
 ## 2026-09-26 — ICQ-style "uh-oh" and drive level 3
 
 **Requests:** louder via firmware, and the classic ICQ sound.
