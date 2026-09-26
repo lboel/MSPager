@@ -7,6 +7,12 @@ static bool parse(const char* yaml, PagerConfig& cfg, PagerCfgError& err) {
   return pagerCfgParseYaml(yaml, strlen(yaml), cfg, err);
 }
 
+struct BadCase {
+  const char* yaml;
+  int line;
+  const char* msg_part;
+};
+
 static const char* FULL =
   "# MSPager setup\n"
   "version: 1\n"
@@ -86,6 +92,80 @@ TEST(PagerConfig, ParsesFlowChannel) {
   EXPECT_STREQ("Sp\xC3\xA4ter", cfg.questions[0].replies[1]);
 }
 
+TEST(PagerConfig, RadioRegionPreset) {
+  PagerConfig cfg;
+  PagerCfgError err;
+  ASSERT_TRUE(parse("radio:\n  region: eu\n", cfg, err)) << err.msg;
+  EXPECT_EQ(PAGER_CFG_HAS_RADIO, cfg.flags);
+  EXPECT_STREQ("EU", pagerCfgRegionName(cfg.region));
+  EXPECT_EQ(869618u, cfg.freq_khz);
+  EXPECT_EQ(62500u, cfg.bw_hz);
+  EXPECT_EQ(8, cfg.sf);
+  EXPECT_EQ(5, cfg.cr);
+
+  ASSERT_TRUE(parse("radio: {region: US}\n", cfg, err)) << err.msg;
+  EXPECT_EQ(910525u, cfg.freq_khz);
+  EXPECT_EQ(7, cfg.sf);
+}
+
+TEST(PagerConfig, RadioExplicitValues) {
+  PagerConfig cfg;
+  PagerCfgError err;
+  const char* yaml =
+    "radio:\n"
+    "  region: EU\n"
+    "  frequency: 869.525\n"
+    "  bandwidth: 250\n"
+    "  spreading_factor: 11\n"
+    "  coding_rate: \"5\"\n";
+  ASSERT_TRUE(parse(yaml, cfg, err)) << err.line << ": " << err.msg;
+  EXPECT_EQ(869525u, cfg.freq_khz);
+  EXPECT_EQ(250000u, cfg.bw_hz);
+  EXPECT_EQ(11, cfg.sf);
+
+  ASSERT_TRUE(parse("radio:\n  region: AU\n  frequency: 916.575\n  bandwidth: 62.5\n  spreading_factor: 7\n  coding_rate: 8\n", cfg, err)) << err.msg;
+  EXPECT_EQ(916575u, cfg.freq_khz);
+  ASSERT_TRUE(parse("radio:\n  region: EU\n  frequency: 868\n  bandwidth: 31.25\n", cfg, err)) << err.msg;
+  EXPECT_EQ(868000u, cfg.freq_khz);
+  EXPECT_EQ(31250u, cfg.bw_hz);
+  EXPECT_EQ(8, cfg.sf);   // rest from the EU preset
+}
+
+TEST(PagerConfig, RadioErrors) {
+  const BadCase cases[] = {
+    { "radio:\n  frequency: 869.618\n", 1, "needs a 'region'" },
+    { "radio:\n  region: XX\n", 2, "unknown region" },
+    { "radio:\n  region: AU\n", 1, "no preset" },
+    { "radio:\n  region: EU\n  frequency: 915.0\n", 1, "outside EU band 863-870" },
+    { "radio:\n  region: EU\n  frequency: 869.99\n  bandwidth: 250\n", 1, "outside EU band" },   // 869.99 + 0.125 > 870
+    { "radio:\n  region: EU\n  frequency: 869.6185\n", 3, "at most 3 decimals" },
+    { "radio:\n  region: EU\n  frequency: 8x9\n", 3, "must be a number" },
+    { "radio:\n  region: EU\n  bandwidth: 100\n", 3, "bandwidth must be one of" },
+    { "radio:\n  region: EU\n  spreading_factor: 13\n", 3, "5..12" },
+    { "radio:\n  region: EU\n  coding_rate: 4\n", 3, "5..8" },
+    { "radio:\n  region: EU\n  power: 20\n", 3, "unknown key 'power'" },
+    { "radio: EU\n", 1, "nested" },
+  };
+  for (const BadCase& c : cases) {
+    PagerConfig cfg;
+    PagerCfgError err;
+    EXPECT_FALSE(parse(c.yaml, cfg, err)) << c.yaml;
+    EXPECT_EQ(c.line, err.line) << c.yaml << " -> " << err.msg;
+    EXPECT_NE(nullptr, strstr(err.msg, c.msg_part)) << c.yaml << " -> " << err.msg;
+  }
+}
+
+TEST(PagerConfig, RadioRoundTrip) {
+  PagerConfig cfg, back;
+  PagerCfgError err;
+  ASSERT_TRUE(parse("nickname: Anna\nradio:\n  region: US\n  frequency: 915.0\n", cfg, err)) << err.msg;
+  uint8_t blob[PAGER_CFG_BLOB_MAX];
+  int n = pagerCfgSerialize(cfg, blob, sizeof(blob));
+  ASSERT_GT(n, 0);
+  ASSERT_TRUE(pagerCfgDeserialize(blob, n, back));
+  EXPECT_EQ(0, memcmp(&cfg, &back, sizeof(cfg)));
+}
+
 TEST(PagerConfig, EmptyDocumentKeepsBuildDefaults) {
   PagerConfig cfg;
   PagerCfgError err;
@@ -100,12 +180,6 @@ TEST(PagerConfig, SurrogatePairEscape) {
   ASSERT_TRUE(parse("questions:\n  - text: Anrufen?\n    replies: [\"\\uD83D\\uDCDE\"]\n", cfg, err)) << err.msg;
   EXPECT_STREQ("\xF0\x9F\x93\x9E", cfg.questions[0].replies[0]);
 }
-
-struct BadCase {
-  const char* yaml;
-  int line;
-  const char* msg_part;
-};
 
 TEST(PagerConfig, ReportsErrorsWithLine) {
   const BadCase cases[] = {
@@ -182,7 +256,9 @@ TEST(PagerConfig, SerializeRoundTrip) {
 TEST(PagerConfig, WorstCaseFitsBlob) {
   PagerConfig cfg;
   memset(&cfg, 0, sizeof(cfg));
-  cfg.flags = PAGER_CFG_HAS_NICKNAME | PAGER_CFG_HAS_CHANNEL | PAGER_CFG_HAS_KEY;
+  cfg.flags = PAGER_CFG_HAS_NICKNAME | PAGER_CFG_HAS_CHANNEL | PAGER_CFG_HAS_KEY | PAGER_CFG_HAS_RADIO;
+  cfg.region = 1;
+  cfg.sf = cfg.cr = 5;
   memset(cfg.nickname, 'n', PAGER_CFG_NAME_MAX);
   memset(cfg.channel_name, 'c', PAGER_CFG_NAME_MAX);
   cfg.num_questions = PAGER_CFG_MAX_QUESTIONS;

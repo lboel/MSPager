@@ -3,6 +3,15 @@
 # The emoji listed in docs/pager_emoji.md show as pictures on the pager.
 version: 1
 nickname: Mia
+# same for every pager of the group: country/band and LoRa settings (FRD-023).
+# EU/UK/US/CA have a preset, so "region" alone is enough. AU/NZ/IN/KR need all four values.
+radio:
+  region: EU
+  # frequency: 869.618        # MHz, must lie in the region's band
+  # bandwidth: 62.5           # kHz
+  # spreading_factor: 8
+  # coding_rate: 5
+
 channel:
   name: Familie
   key: 00000000000000000000000000000000   # replace: openssl rand -hex 16

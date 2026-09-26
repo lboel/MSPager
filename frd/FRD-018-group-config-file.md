@@ -21,6 +21,7 @@
    - ensure **exactly one** channel named `channel_name` exists, holding `channel_key`. It's created in the first free slot if missing, and its key is overwritten if different. Duplicates with the same name are removed.
    - apply the radio settings from the file.
 4. Changes made in the MeshCore app to the pager channel or the radio settings SHALL only last until the next reboot.
+   *(Since FRD-021/FRD-023, a setup uploaded over BLE overrides channel and radio from this file.)*
 5. A missing `pager.secret.ini` or a key that isn't 32 characters long SHALL fail the build (`static_assert` with a hint to create the file). A key with non-hex characters SHALL leave the channels untouched (the UI then shows `No 'Pager' channel`).
 
 ## Acceptance criteria

@@ -271,3 +271,17 @@ Setup: [pager_setup_kids.yaml](pager_setup_kids.yaml) with a real key, once with
 - [ ] 5. From the MeshCore app, send `👍🏽 ❤️ 💙 🙂 🦄` into the channel. The pager shows 👍, ❤, ❤, 😀 as pictures and 🦄 as a block. The skin tone takes no space.
 - [ ] 6. The 📞 reply looks exactly as before (desk phone).
 - [ ] 7. Long texts with emoji scroll smoothly in the selected message (marquee), and pictures aren't cut into the next line.
+
+---
+
+## M4d — Radio region in the setup (FRD-023, two pagers)
+
+Setup: copy the group's setup YAMLs (e.g. `pager-setups/kids-*.yaml`) and change only the `radio` block.
+
+- [ ] 1. Upload with `radio: {region: EU}`: the summary ends with `radio=EU:869.618/62.5/8/5`.
+- [ ] 2. Upload with `region: EU` + `frequency: 915`: rejected with `frequency outside EU band 863-870 MHz`. Status unchanged.
+- [ ] 3. Upload A and B with `region: EU`, `frequency: 868.000`: the summary shows `868.000`. A and B still exchange messages.
+- [ ] 4. Only A back to `869.618`: B no longer receives A's messages (different frequency). Then B on `869.618` too: it works again.
+- [ ] 5. RST on A: `status` still shows the uploaded radio.
+- [ ] 6. `clear` on A: `radio=build:869.618/62.5/8/5`. Then upload the setup again.
+- [ ] 7. The MeshCore app shows the pager's radio settings as in the summary.

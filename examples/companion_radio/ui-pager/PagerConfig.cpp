@@ -11,6 +11,39 @@ void pagerCfgClear(PagerConfig& cfg) {
   memset(&cfg, 0, sizeof(cfg));
 }
 
+// ---------------------------------------------------------------- regions (FRD-023)
+//
+// Allowed band per country/region (LoRa ISM bands the Heltec V4 covers). The whole
+// channel (frequency +- bandwidth/2) must lie inside it. Presets only where the values
+// are known: EU/UK = pager.ini (MeshCore "EU/UK (Narrow)"), US/CA = MeshCore FAQ
+// "USA/Canada (Recommended)". Other regions need explicit values in the YAML.
+
+struct PagerRegion {
+  const char* code;
+  uint32_t min_khz, max_khz;
+  uint32_t freq_khz, bw_hz;   // preset, freq_khz 0 = none
+  uint8_t sf, cr;
+};
+
+static const PagerRegion REGIONS[] = {
+  { "EU", 863000, 870000, 869618, 62500, 8, 5 },
+  { "UK", 863000, 870000, 869618, 62500, 8, 5 },
+  { "US", 902000, 928000, 910525, 62500, 7, 5 },
+  { "CA", 902000, 928000, 910525, 62500, 7, 5 },
+  { "AU", 915000, 928000, 0, 0, 0, 0 },
+  { "NZ", 915000, 928000, 0, 0, 0, 0 },
+  { "IN", 865000, 867000, 0, 0, 0, 0 },
+  { "KR", 920000, 923000, 0, 0, 0, 0 },
+};
+#define NUM_REGIONS  (int)(sizeof(REGIONS) / sizeof(REGIONS[0]))
+
+// LoRa bandwidths of the SX1262 in Hz
+static const uint32_t BANDWIDTHS[] = { 7800, 10400, 15600, 20800, 31250, 41700, 62500, 125000, 250000, 500000 };
+
+const char* pagerCfgRegionName(uint8_t region) {
+  return region >= 1 && region <= NUM_REGIONS ? REGIONS[region - 1].code : "";
+}
+
 const PagerQuestion* pagerCfgFindQuestion(const PagerConfig& cfg, const char* text) {
   for (int i = 0; i < cfg.num_questions; i++) {
     if (strcmp(cfg.questions[i].text, text) == 0) return &cfg.questions[i];
@@ -114,14 +147,16 @@ public:
   bool run(const char* yaml, size_t len);
 
 private:
-  enum Section { NONE, CHANNEL, QUESTIONS };
+  enum Section { NONE, CHANNEL, RADIO, QUESTIONS };
 
   PagerConfig& _cfg;
   PagerCfgError& _err;
   int _line = 0;
   Section _section = NONE;
-  unsigned _seen_top = 0, _seen_chan = 0, _seen_q = 0;
+  unsigned _seen_top = 0, _seen_chan = 0, _seen_radio = 0, _seen_q = 0;
   int _chan_indent = -1;
+  int _radio_indent = -1;
+  int _radio_line = 0;
   int _q_indent = -1;         // column of the "- " of question items
   int _q_key_indent = -1;     // column of the keys inside the current question
   int _replies_indent = -1;   // >= 0 while a block list of replies may follow
@@ -137,7 +172,10 @@ private:
   bool channelKey(const char* key, char* value);
   bool questionKey(const char* key, char* value, int indent);
   bool flowList(char* s);
-  bool flowChannel(char* s);
+  bool flowMap(char* s, Section section);
+  bool radioKey(const char* key, char* value);
+  bool fixedPoint(char* s, int decimals, uint32_t& out, const char* what);
+  bool finishRadio();
   bool addReply(char* s);
   bool scalar(char* s, char* dest, int max_len, const char* what);
   bool finish();
@@ -231,10 +269,11 @@ bool Parser::keyLine(int indent, char* s) {
     _q = NULL;
     return topKey(key, value);
   }
-  if (_section == CHANNEL) {
-    if (_chan_indent < 0) _chan_indent = indent;
-    if (indent != _chan_indent) return fail("inconsistent indentation of '%s'", key);
-    return channelKey(key, value);
+  if (_section == CHANNEL || _section == RADIO) {
+    int& sec_indent = _section == CHANNEL ? _chan_indent : _radio_indent;
+    if (sec_indent < 0) sec_indent = indent;
+    if (indent != sec_indent) return fail("inconsistent indentation of '%s'", key);
+    return _section == CHANNEL ? channelKey(key, value) : radioKey(key, value);
   }
   if (_section == QUESTIONS && _q && indent > _q_indent) {
     if (_q_key_indent < 0) _q_key_indent = indent;
@@ -261,10 +300,20 @@ bool Parser::topKey(const char* key, char* value) {
   }
   if (strcmp(key, "channel") == 0) {
     if (!once(_seen_top, 4, key)) return false;
-    if (*value == '{') return flowChannel(value);
+    if (*value == '{') return flowMap(value, CHANNEL);
     if (*value) return fail("'channel' needs nested 'name:' and 'key:' lines");
     _section = CHANNEL;
     _chan_indent = -1;
+    return true;
+  }
+  if (strcmp(key, "radio") == 0) {
+    if (!once(_seen_top, 16, key)) return false;
+    _radio_line = _line;
+    _cfg.flags |= PAGER_CFG_HAS_RADIO;
+    if (*value == '{') return flowMap(value, RADIO);
+    if (*value) return fail("'radio' needs nested lines, e.g. 'region: EU'");
+    _section = RADIO;
+    _radio_indent = -1;
     return true;
   }
   if (strcmp(key, "questions") == 0) {
@@ -343,8 +392,9 @@ bool Parser::flowList(char* s) {
   return true;
 }
 
-// "{name: Familie, key: 00ff...}" on a single line
-bool Parser::flowChannel(char* s) {
+// "{name: Familie, key: 00ff...}" / "{region: EU}" on a single line
+bool Parser::flowMap(char* s, Section section) {
+  const char* what = section == CHANNEL ? "channel" : "radio";
   char* p = s + 1;
   for (;;) {
     while (isBlank(*p)) p++;
@@ -353,18 +403,18 @@ bool Parser::flowChannel(char* s) {
     while (*p && *p != ',' && *p != '}') {
       if ((*p == '"' || *p == '\'') && atTokenStart(item, p)) {
         p = skipQuoted(p);
-        if (p == NULL) return fail("missing closing quote in channel");
+        if (p == NULL) return fail("missing closing quote in %s", what);
       } else {
         p++;
       }
     }
-    if (*p == 0) return fail("missing '}' in channel");
+    if (*p == 0) return fail("missing '}' in %s", what);
     char sep = *p;
     *p++ = 0;
     char *key, *value;
-    if (!splitKey(item, key, value)) return fail("expected 'key: value' in channel");
+    if (!splitKey(item, key, value)) return fail("expected 'key: value' in %s", what);
     rtrim(value);
-    if (!channelKey(key, value)) return false;
+    if (!(section == CHANNEL ? channelKey(key, value) : radioKey(key, value))) return false;
     if (sep == '}') break;
   }
   while (isBlank(*p)) p++;
@@ -440,7 +490,80 @@ bool Parser::scalar(char* s, char* dest, int max_len, const char* what) {
   return true;
 }
 
+// "869.618" -> 869618 (decimals = 3): digits, optional '.', at most `decimals` fraction digits
+bool Parser::fixedPoint(char* s, int decimals, uint32_t& out, const char* what) {
+  char buf[16];
+  if (!scalar(s, buf, sizeof(buf) - 1, what)) return false;
+  uint32_t v = 0;
+  int frac = -1;
+  for (const char* p = buf; *p; p++) {
+    if (*p == '.' && frac < 0) { frac = 0; continue; }
+    if (*p < '0' || *p > '9' || frac >= decimals || v > 100000000) return fail("%s must be a number with at most %d decimals", what, decimals);
+    v = v * 10 + (*p - '0');
+    if (frac >= 0) frac++;
+  }
+  for (int i = frac < 0 ? 0 : frac; i < decimals; i++) v *= 10;
+  out = v;
+  return true;
+}
+
+bool Parser::radioKey(const char* key, char* value) {
+  if (strcmp(key, "region") == 0) {
+    if (!once(_seen_radio, 1, key)) return false;
+    char code[8];
+    if (!scalar(value, code, sizeof(code) - 1, "region")) return false;
+    for (char* c = code; *c; c++) if (*c >= 'a' && *c <= 'z') *c -= 32;
+    for (int i = 0; i < NUM_REGIONS; i++) {
+      if (strcmp(code, REGIONS[i].code) == 0) { _cfg.region = i + 1; return true; }
+    }
+    return fail("unknown region '%s' (EU UK US CA AU NZ IN KR)", code);
+  }
+  if (strcmp(key, "frequency") == 0) {
+    if (!once(_seen_radio, 2, key)) return false;
+    return fixedPoint(value, 3, _cfg.freq_khz, "frequency");
+  }
+  if (strcmp(key, "bandwidth") == 0) {
+    if (!once(_seen_radio, 4, key)) return false;
+    uint32_t bw_centi;   // kHz with 2 decimals
+    if (!fixedPoint(value, 2, bw_centi, "bandwidth")) return false;
+    for (uint32_t bw : BANDWIDTHS) {
+      if (bw / 10 == bw_centi) { _cfg.bw_hz = bw; return true; }
+    }
+    return fail("bandwidth must be one of 7.8 10.4 15.6 20.8 31.25 41.7 62.5 125 250 500");
+  }
+  if (strcmp(key, "spreading_factor") == 0 || strcmp(key, "coding_rate") == 0) {
+    bool sf = key[0] == 's';
+    if (!once(_seen_radio, sf ? 8 : 16, key)) return false;
+    uint32_t v;
+    if (!fixedPoint(value, 0, v, key)) return false;
+    if (sf ? (v < 5 || v > 12) : (v < 5 || v > 8)) return fail(sf ? "spreading_factor must be 5..12" : "coding_rate must be 5..8");
+    (sf ? _cfg.sf : _cfg.cr) = (uint8_t)v;
+    return true;
+  }
+  return fail("unknown key '%s' in radio", key);
+}
+
+// region preset fills the gaps; the channel must fit into the region's band
+bool Parser::finishRadio() {
+  _line = _radio_line;
+  if (_cfg.region == 0) return fail("radio needs a 'region'");
+  const PagerRegion& r = REGIONS[_cfg.region - 1];
+  if (r.freq_khz == 0 && (_cfg.freq_khz == 0 || _cfg.bw_hz == 0 || _cfg.sf == 0 || _cfg.cr == 0)) {
+    return fail("region %s has no preset: set frequency, bandwidth, spreading_factor, coding_rate", r.code);
+  }
+  if (_cfg.freq_khz == 0) _cfg.freq_khz = r.freq_khz;
+  if (_cfg.bw_hz == 0)    _cfg.bw_hz = r.bw_hz;
+  if (_cfg.sf == 0)       _cfg.sf = r.sf;
+  if (_cfg.cr == 0)       _cfg.cr = r.cr;
+  uint32_t half_khz = (_cfg.bw_hz + 1999) / 2000;   // rounded up
+  if (_cfg.freq_khz < r.min_khz + half_khz || _cfg.freq_khz + half_khz > r.max_khz) {
+    return fail("frequency outside %s band %lu-%lu MHz", r.code, (unsigned long)(r.min_khz / 1000), (unsigned long)(r.max_khz / 1000));
+  }
+  return true;
+}
+
 bool Parser::finish() {
+  if ((_cfg.flags & PAGER_CFG_HAS_RADIO) && !finishRadio()) return false;
   for (int i = 0; i < _cfg.num_questions; i++) {
     const PagerQuestion& q = _cfg.questions[i];
     _line = _q_line[i];
@@ -455,7 +578,8 @@ bool Parser::finish() {
 
 // ---------------------------------------------------------------- flash format
 //
-// "PCFG", version, flags, [nickname], [channel name], [16-byte key], question count,
+// "PCFG", version, flags, [nickname], [channel name], [16-byte key],
+// [radio: region, freq_khz u32, bw_hz u32, sf, cr], question count,
 // per question: text, reply count, replies. Strings are length-prefixed (1 byte), no NUL.
 
 const uint8_t MAGIC[4] = { 'P', 'C', 'F', 'G' };
@@ -472,6 +596,7 @@ struct Writer {
   }
   void byte(uint8_t b) { bytes(&b, 1); }
   void str(const char* s) { int n = strlen(s); byte(n); bytes(s, n); }
+  void u32(uint32_t v) { uint8_t b[4] = { (uint8_t)v, (uint8_t)(v >> 8), (uint8_t)(v >> 16), (uint8_t)(v >> 24) }; bytes(b, 4); }
 };
 
 struct Reader {
@@ -485,6 +610,7 @@ struct Reader {
     left -= n;
   }
   uint8_t byte() { uint8_t b = 0; bytes(&b, 1); return b; }
+  uint32_t u32() { uint8_t b[4] = { 0 }; bytes(b, 4); return b[0] | (b[1] << 8) | (b[2] << 16) | ((uint32_t)b[3] << 24); }
   void str(char* dest, int max_len) {
     int n = byte();
     if (n > max_len) ok = false;
@@ -508,6 +634,13 @@ int pagerCfgSerialize(const PagerConfig& cfg, uint8_t* dest, int dest_size) {
   if (cfg.flags & PAGER_CFG_HAS_NICKNAME) w.str(cfg.nickname);
   if (cfg.flags & PAGER_CFG_HAS_CHANNEL)  w.str(cfg.channel_name);
   if (cfg.flags & PAGER_CFG_HAS_KEY)      w.bytes(cfg.channel_key, sizeof(cfg.channel_key));
+  if (cfg.flags & PAGER_CFG_HAS_RADIO) {
+    w.byte(cfg.region);
+    w.u32(cfg.freq_khz);
+    w.u32(cfg.bw_hz);
+    w.byte(cfg.sf);
+    w.byte(cfg.cr);
+  }
   w.byte(cfg.num_questions);
   for (int i = 0; i < cfg.num_questions; i++) {
     const PagerQuestion& q = cfg.questions[i];
@@ -528,6 +661,14 @@ bool pagerCfgDeserialize(const uint8_t* src, int len, PagerConfig& cfg) {
   if (cfg.flags & PAGER_CFG_HAS_NICKNAME) r.str(cfg.nickname, PAGER_CFG_NAME_MAX);
   if (cfg.flags & PAGER_CFG_HAS_CHANNEL)  r.str(cfg.channel_name, PAGER_CFG_NAME_MAX);
   if (cfg.flags & PAGER_CFG_HAS_KEY)      r.bytes(cfg.channel_key, sizeof(cfg.channel_key));
+  if (cfg.flags & PAGER_CFG_HAS_RADIO) {
+    cfg.region = r.byte();
+    cfg.freq_khz = r.u32();
+    cfg.bw_hz = r.u32();
+    cfg.sf = r.byte();
+    cfg.cr = r.byte();
+    if (cfg.region < 1 || cfg.region > NUM_REGIONS || cfg.sf < 5 || cfg.sf > 12 || cfg.cr < 5 || cfg.cr > 8) r.ok = false;
+  }
   cfg.num_questions = r.byte();
   if (cfg.num_questions > PAGER_CFG_MAX_QUESTIONS) r.ok = false;
   for (int i = 0; r.ok && i < cfg.num_questions; i++) {

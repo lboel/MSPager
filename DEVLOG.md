@@ -4,6 +4,26 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Radio region and frequency in the setup YAML (FRD-023)
+
+**Request:** a region/country setting in the YAML, so the MHz can be controlled through it.
+
+**Done**
+- New optional block `radio:` with `region` (required), `frequency` (MHz, ≤ 3 decimals), `bandwidth` (kHz), `spreading_factor`, `coding_rate`. The region defines the allowed band, and frequency ± bandwidth/2 must fit into it: EU/UK 863–870, US/CA 902–928, AU/NZ 915–928, IN 865–867, KR 920–923.
+- Presets only where the values are verified in this repo: **EU/UK** = `pager.ini` (869.618/62.5/8/5), **US/CA** = MeshCore FAQ (910.525/62.5/7/5). The other regions need all four values, so no frequencies are guessed.
+- `MyMesh::loadPagerRadioPrefs()`: pager.ini first, then the setup radio. It runs at boot, and after a successful upload or `clear`; `radio_driver.setParams()` is called only when something changed. The summary is extended with `radio=<region|build>:MHz/kHz/SF/CR`, and its buffer grows to one frame.
+- Flash format: optional radio fields behind flag `0x08`. Old blobs still load.
+- Tests: 4 new parser tests (preset, explicit values, 12 error cases, round trip). All 60 native tests pass. `heltec_v4_pager` and `heltec_v4_companion_radio_ble` build.
+- Docs: protocol (key table, region table, summary), frontend handoff (JSON schema, validation, "same radio for the whole group"), both example YAMLs with `radio: region: EU`, FRD-023, checklist M4d.
+
+**Decisions:** TX power and duty cycle aren't part of the setup. The pager only checks the band, and legal use of the frequency is up to the group.
+
+**Deployed:** Anna and Bob run `v0.4.4-m4d` (app at `0x10000`, pairings kept) with the kids setup plus `radio: {region: EU}`. Both report `radio=EU:869.618/62.5/8/5`.
+
+**Open:** frequency change test (checklist M4d, steps 3–7).
+
+---
+
 ## 2026-09-26 — Pickers: selected option at double size; M4c device test
 
 **Request:** in the send and reply menus, the selected entry should be double size, like the selected message.

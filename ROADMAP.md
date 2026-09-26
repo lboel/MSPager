@@ -11,6 +11,7 @@ Milestones are sequential. Each one ends with a working, flashable build. Requir
 | **M4 — Alerting & polish** | LED blink until the overview is acknowledged (one uniform pattern), 📞 as desk-phone glyph | 013, 014, 020 | Alert behaviour, beep and 📞 verified on device and in the MeshCore app | 🧪 Built, awaiting device test ([checklist](docs/pager_testing.md)) |
 | **M4b — Setup over BLE** | A setup frontend uploads a YAML (nickname, channel name/key, extra questions with their own replies) to a flashed pager. The pager parses, validates and stores it ([protocol](docs/pager_config_protocol.md)) | 021 | Upload, reject with line number, questions/replies on two pagers, survives reboot | ✅ Verified on two pagers (2026-09-26). Checklist steps 14, 15, 17 still open |
 | **M4c — Emoji for kids** | 25 important emoji drawn as pictures (small + large), so setup texts/replies work for children ([list](docs/pager_emoji.md)) | 022 | Kids setup shows all emoji as pictures, 📞 unchanged | ✅ Verified on two pagers (2026-09-26). Pickers show the selected entry at double size |
+| **M4d — Radio region in the setup** | `radio:` block in the setup YAML: region (country band), frequency in MHz, bandwidth/SF/CR, presets for EU/UK and US/CA | 023 | Upload switches the frequency, band check rejects wrong MHz, survives reboot, `clear` goes back to `pager.ini` | 🧪 Built + unit tests, awaiting device test |
 | **M5 — Field test & release** | ≥3 pagers outdoors incl. a repeater hop. Battery measurement. Tagged release with a merged `.bin` | — | PRD §10 success criteria met. Release notes in DEVLOG | |
 
 ## Backlog (not scheduled)
@@ -18,5 +19,6 @@ Milestones are sequential. Each one ends with a working, flashable build. Requir
 - Optional BLE auto-off after N minutes to save battery (revisit after the M5 measurement)
 - ~~Configurable canned catalogue via app/CLI instead of compile-time~~: done in M4b (FRD-021, extra questions; the built-ins stay)
 - Read the active setup back as YAML (currently only a STATUS summary)
-- Radio settings in the setup YAML
+- ~~Radio settings in the setup YAML~~: done in M4d (FRD-023)
+- TX power / duty-cycle limits per region
 - Printed one-page quick-reference card for users

@@ -1014,12 +1014,8 @@ void MyMesh::begin(bool has_display) {
   _prefs.gps_enabled = 1;
   _prefs.gps_interval = 0;
 #endif
-#ifdef PAGER_RADIO_FREQ
-  // radio settings from pager.ini, applied at every boot so all pagers can hear each other
-  _prefs.freq = PAGER_RADIO_FREQ;
-  _prefs.bw = PAGER_RADIO_BW;
-  _prefs.sf = PAGER_RADIO_SF;
-  _prefs.cr = PAGER_RADIO_CR;
+#ifdef PAGER_CHANNEL_NAME
+  loadPagerRadioPrefs();   // pager.ini or setup radio, applied at every boot so all pagers can hear each other
 #endif
 
   radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
@@ -1134,7 +1130,23 @@ bool MyMesh::savePagerConfig(const PagerConfig& cfg) {
   return ok;
 }
 
-// takes over a new setup right away: nickname, channel (a renamed one is removed), questions
+// radio settings into _prefs: from the BLE setup (FRD-023), else from pager.ini (FRD-018)
+void MyMesh::loadPagerRadioPrefs() {
+#ifdef PAGER_RADIO_FREQ
+  _prefs.freq = PAGER_RADIO_FREQ;
+  _prefs.bw = PAGER_RADIO_BW;
+  _prefs.sf = PAGER_RADIO_SF;
+  _prefs.cr = PAGER_RADIO_CR;
+#endif
+  if (_pager_cfg.flags & PAGER_CFG_HAS_RADIO) {
+    _prefs.freq = _pager_cfg.freq_khz / 1000.0f;
+    _prefs.bw = _pager_cfg.bw_hz / 1000.0f;
+    _prefs.sf = _pager_cfg.sf;
+    _prefs.cr = _pager_cfg.cr;
+  }
+}
+
+// takes over a new setup right away: nickname, channel (a renamed one is removed), radio, questions
 void MyMesh::applyPagerConfig(const PagerConfig& cfg) {
   char old_name[32];
   StrHelper::strncpy(old_name, getPagerChannelName(), sizeof(old_name));
@@ -1156,16 +1168,26 @@ void MyMesh::applyPagerConfig(const PagerConfig& cfg) {
     saveChannels();
   }
   ensurePagerChannel();
+
+  float freq = _prefs.freq, bw = _prefs.bw;
+  uint8_t sf = _prefs.sf, cr = _prefs.cr;
+  loadPagerRadioPrefs();
+  if (freq != _prefs.freq || bw != _prefs.bw || sf != _prefs.sf || cr != _prefs.cr) {
+    savePrefs();
+    radio_driver.setParams(_prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);   // like CMD_SET_RADIO_PARAMS
+  }
 }
 
 // RESP_CODE_PAGER_CONFIG, status, line (uint16 LE), message (UTF-8, rest of the frame).
 // Without msg, the message summarises the active setup.
 void MyMesh::writePagerConfigResult(uint8_t status, int line, const char* msg) {
-  char summary[128];
+  char summary[MAX_FRAME_SIZE - 4 + 1];   // longest: two 31-byte names + radio ~ 165 bytes
   if (msg == NULL) {
-    snprintf(summary, sizeof(summary), "nickname=%s channel=%s key=%s questions=%d", _prefs.node_name,
-             getPagerChannelName(), (_pager_cfg.flags & PAGER_CFG_HAS_KEY) ? "setup" : "build",
-             _pager_cfg.num_questions);
+    snprintf(summary, sizeof(summary), "nickname=%s channel=%s key=%s questions=%d radio=%s:%.3f/%g/%d/%d",
+             _prefs.node_name, getPagerChannelName(), (_pager_cfg.flags & PAGER_CFG_HAS_KEY) ? "setup" : "build",
+             _pager_cfg.num_questions,
+             (_pager_cfg.flags & PAGER_CFG_HAS_RADIO) ? pagerCfgRegionName(_pager_cfg.region) : "build",
+             _prefs.freq, _prefs.bw, _prefs.sf, _prefs.cr);
     msg = summary;
   }
   int i = 0;

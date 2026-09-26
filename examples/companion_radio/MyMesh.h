@@ -175,6 +175,7 @@ protected:
   void loadPagerConfig();
   bool savePagerConfig(const PagerConfig& cfg);
   void applyPagerConfig(const PagerConfig& cfg);
+  void loadPagerRadioPrefs();
   void handlePagerConfigCmd(size_t len);
   void writePagerConfigResult(uint8_t status, int line, const char* msg);
 #endif

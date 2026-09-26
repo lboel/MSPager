@@ -6,6 +6,15 @@ version: 1
 # per pager: sender name shown to the others (max 31 bytes, no ':' '[' ']')
 nickname: Anna
 
+# same for every pager of the group: country/band and LoRa settings (FRD-023).
+# EU/UK/US/CA have a preset, so "region" alone is enough. AU/NZ/IN/KR need all four values.
+radio:
+  region: EU
+  # frequency: 869.618        # MHz, must lie in the region's band
+  # bandwidth: 62.5           # kHz
+  # spreading_factor: 8
+  # coding_rate: 5
+
 # same for every pager of the group
 channel:
   name: Familie                            # max 31 bytes, not "Public"

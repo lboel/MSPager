@@ -15,7 +15,7 @@
 
 ## 2. What the frontend must do
 
-1. Let an admin define a **group**: channel name, channel key (generate a random one), and a list of **extra questions, each with its own replies**.
+1. Let an admin define a **group**: channel name, channel key (generate a random one), **country/region for the radio** (optionally a custom frequency), and a list of **extra questions, each with its own replies**.
 2. Let the admin add **members** (one nickname per pager).
 3. For each member, **generate a YAML file** (group part + that member's nickname).
 4. **Connect to a pager over BLE**, upload that member's YAML, and show the result: a success summary, or an error with line number and reason.
@@ -23,7 +23,7 @@
 
 Suggested platform: a **web app using Web Bluetooth** (Chrome/Edge on desktop or Android). This fits the existing MeshCore tooling (the official MeshCore web app uses Web Bluetooth too). iOS Safari has no Web Bluetooth. If iOS matters, a native or Capacitor app with a BLE plugin needs the same protocol. Tech stack and design are up to you.
 
-**Out of scope:** flashing firmware, radio settings (frequency etc., fixed at build time), sending messages, maps.
+**Out of scope:** flashing firmware, TX power, sending messages, maps. **In scope since FRD-023:** the group's **radio settings** (country/region + frequency), see §4.
 
 ---
 
@@ -32,6 +32,7 @@ Suggested platform: a **web app using Web Bluetooth** (Chrome/Edge on desktop or
 | Rule | Why |
 |---|---|
 | **All pagers of a group must get identical `channel` and `questions`.** Only `nickname` differs. | A receiver looks up an incoming question text in **its own** setup to decide which replies to offer. The channel key must match, or pagers can't read each other. |
+| **All pagers of a group must get the same `radio`** (region + frequency). The region is chosen on the group screen (e.g. a country dropdown), and the EU/UK and US/CA presets fill in the rest. | A pager on another frequency can't hear the group. Changing the radio of an existing group means re-uploading **every** member. Show a warning. |
 | Uploading **replaces** the pager's whole previous setup (no merge). | Always send the full group definition plus the nickname. |
 | Every key is optional. A missing key means "use the value compiled into the firmware" (channel `Pager`, the build's key, built-in questions only). | Lets you do partial setups, but the normal flow sends everything. |
 | The setup is **enforced at every boot**. Changes made in the MeshCore app to the nickname or pager channel revert on reboot. | To change something, upload a new YAML. |
@@ -50,6 +51,9 @@ Suggested platform: a **web app using Web Bluetooth** (Chrome/Edge on desktop or
 ```yaml
 version: 1
 nickname: Anna                       # per pager
+radio:                               # identical for the whole group
+  region: EU                         # EU/UK/US/CA: preset; others need frequency etc.
+  frequency: 869.618                 # optional here (preset), MHz
 channel:                             # identical for the whole group
   name: Familie
   key: 8b3387e9c5cdea6ac9e5edbaa115cd72
@@ -71,6 +75,16 @@ The same as a JSON Schema (validate the model with it before generating YAML):
   "properties": {
     "version":  { "const": 1 },
     "nickname": { "type": "string", "minLength": 1, "pattern": "^[^:\\[\\]]+$", "x-maxBytesUtf8": 31 },
+    "radio": {
+      "type": "object", "additionalProperties": false, "required": ["region"],
+      "properties": {
+        "region":           { "enum": ["EU", "UK", "US", "CA", "AU", "NZ", "IN", "KR"] },
+        "frequency":        { "type": "number", "x-unit": "MHz", "x-maxDecimals": 3, "x-inBandOfRegion": true },
+        "bandwidth":        { "enum": [7.8, 10.4, 15.6, 20.8, 31.25, 41.7, 62.5, 125, 250, 500] },
+        "spreading_factor": { "type": "integer", "minimum": 5, "maximum": 12 },
+        "coding_rate":      { "type": "integer", "minimum": 5, "maximum": 8 }
+      }
+    },
     "channel": {
       "type": "object", "additionalProperties": false,
       "properties": {
@@ -102,6 +116,11 @@ The same as a JSON Schema (validate the model with it before generating YAML):
 | `nickname` | 1–31 **UTF-8 bytes**, must not contain `:` `[` `]` | `nickname longer than 31 bytes`, `nickname must not contain…` |
 | `channel.name` | 1–31 bytes, not `Public` | `channel name 'Public' is reserved` |
 | `channel.key` | exactly 32 hex chars (16 bytes) | `channel key must be 32 hex characters` |
+| `radio.region` | required if `radio` present; one of EU UK US CA AU NZ IN KR | `radio needs a 'region'`, `unknown region '…'` |
+| `radio.*` without preset | AU/NZ/IN/KR need all of frequency, bandwidth, spreading_factor, coding_rate | `region AU has no preset: …` |
+| `radio.frequency` | MHz with ≤ 3 decimals; frequency ± bandwidth/2 inside the region band (EU/UK 863–870, US/CA 902–928, AU/NZ 915–928, IN 865–867, KR 920–923) | `frequency outside EU band 863-870 MHz`, `… at most 3 decimals` |
+| `radio.bandwidth` | 7.8 10.4 15.6 20.8 31.25 41.7 62.5 125 250 500 (kHz) | `bandwidth must be one of …` |
+| `radio.spreading_factor` / `coding_rate` | 5–12 / 5–8 | `spreading_factor must be 5..12`, `coding_rate must be 5..8` |
 | `questions` | ≤ 12 items; `text` unique within the list | `more than 12 questions`, `duplicate question '…'` |
 | `questions[].text` | 1–40 bytes, required | `question text longer than 40 bytes`, `question without 'text'` |
 | `questions[].replies` | 1–6 items, each 1–40 bytes | `more than 6 replies`, `question '…' has no replies`, `reply longer than 40 bytes` |
@@ -164,7 +183,7 @@ Standard response frames:
 
 | status | meaning | line | message |
 |---|---|---|---|
-| 0 | stored **and active immediately** | 0 | summary: `nickname=<n> channel=<c> key=<setup\|build> questions=<k>` |
+| 0 | stored **and active immediately** | 0 | summary: `nickname=<n> channel=<c> key=<setup\|build> questions=<k> radio=<region\|build>:<MHz>/<kHz>/<SF>/<CR>` |
 | 1 | invalid YAML/setup. **The pager is unchanged** | 1-based line in the uploaded YAML (0 = whole file) | English reason, see §4.2 |
 | 2 | flash write failed. Pager unchanged | 0 | `flash write failed` |
 
@@ -179,7 +198,7 @@ Standard response frames:
 → 70 02 00 00 <128 bytes>      DATA  offset=0       ← 00
 → 70 02 80 00 <128 bytes>      DATA  offset=128     ← 00
 → 70 02 00 01 <58 bytes>       DATA  offset=256     ← 00
-→ 70 03                        COMMIT               ← 70 00 00 00 "nickname=Anna channel=Familie key=setup questions=3"
+→ 70 03                        COMMIT               ← 70 00 00 00 "nickname=Anna channel=Familie key=setup questions=3 radio=EU:869.618/62.5/8/5"
 ```
 
 Error example: `← 70 01 04 00 "unknown key 'nicknme'"` → status 1, line 4.
@@ -304,5 +323,6 @@ When status is 1, map `line` back to the generated YAML and show the offending l
 ## 11. Open points / possible firmware extensions
 
 - The pager can't **return the stored setup as YAML** yet (STATUS gives only a summary). If the frontend needs "read back and edit", ask for a firmware op (e.g. `0x06` GET, chunked).
-- **Radio settings** aren't part of the setup (they're fixed in `pager.ini` at build time).
+- **TX power** and duty-cycle rules aren't part of the setup. The pager only checks that the frequency lies in the region's band.
+- Region presets exist only for EU/UK and US/CA (the only values verified in this repo). The frontend may carry more presets (e.g. from the MeshCore app) and send explicit values.
 - Firmware limits (12 questions, 6 replies, 40 bytes) are compile-time constants in `PagerConfig.h`. Changing them needs a firmware rebuild and has to respect the 160-byte message budget.

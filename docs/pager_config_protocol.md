@@ -11,6 +11,8 @@ This is for whoever builds the **setup frontend**. It turns the setup of a pager
 ```yaml
 version: 1
 nickname: Anna                              # per pager
+radio:                                      # same for the whole group
+  region: EU                                # country/band; EU/UK/US/CA have a preset
 channel:                                    # same for the whole group
   name: Familie
   key: 8b3387e9c5cdea6ac9e5edbaa115cd72
@@ -30,6 +32,11 @@ questions:                                  # same for the whole group
 | `channel.name` | text | 1–31 bytes. `Public` is reserved | `channel_name` from `pager.ini` (`Pager`) |
 | `channel.key` | text | exactly **32 hex characters** (128-bit key, as in `openssl rand -hex 16`) | key from `pager.secret.ini` |
 | `questions` | list, max **12** | each has `text` (1–40 bytes, unique) and `replies` (list of **1–6** texts, 1–40 bytes each) | only the built-in catalogue |
+| `radio.region` | text | **required when `radio` is present.** `EU`, `UK`, `US`, `CA`, `AU`, `NZ`, `IN`, `KR` (not case-sensitive). Sets the **allowed band** and, for EU/UK/US/CA, a **preset** | radio from `pager.ini` (EU/UK Narrow) |
+| `radio.frequency` | MHz, ≤ 3 decimals | the whole channel (frequency ± bandwidth/2) must lie inside the region's band | preset of the region (required for AU/NZ/IN/KR) |
+| `radio.bandwidth` | kHz | one of `7.8 10.4 15.6 20.8 31.25 41.7 62.5 125 250 500` | preset |
+| `radio.spreading_factor` | number | 5–12 | preset |
+| `radio.coding_rate` | number | 5–8 (= 4/5 … 4/8) | preset |
 
 - **Everything is optional.** A value in the YAML overrides the build config, a missing one keeps it. An upload **replaces** the whole previous setup (no merging). A file without any values (e.g. only comments) goes back to the build config, just like `CLEAR`.
 - **Built-in catalogue** (always present): questions `Angekommen?`, `Brauche Hilfe`, `Standort?`, `Mein Standort`. Default replies: `Ja`, `Nein`, `OK`, `📞`, `Standort?`, `Mein Standort`. A setup question with one of the built-in texts adds nothing to the send menu but **replaces that question's replies**.
@@ -37,13 +44,27 @@ questions:                                  # same for the whole group
 - `Mein Standort` works as a reply too: receivers show distance and direction. `📞` and 24 more emoji are drawn as pictures ([list](pager_emoji.md), kids example: [pager_setup_kids.yaml](pager_setup_kids.yaml)). `ä ö ü Ä Ö Ü ß é °` show correctly on the OLED. Other non-ASCII characters show as a block (in the app they show normally).
 - **Length budget:** each text is at most 40 bytes, so a reply with a mention and a position suffix stays within the 160-byte MeshCore text limit (FRD-012). Note that `ä` is 2 bytes and `📞` is 4.
 
+### Regions and radio presets
+
+| `region` | Allowed band | Preset (frequency / bandwidth / SF / CR) |
+|---|---|---|
+| `EU`, `UK` | 863–870 MHz | **869.618 MHz / 62.5 kHz / 8 / 5** (MeshCore "EU/UK (Narrow)", same as `pager.ini`) |
+| `US`, `CA` | 902–928 MHz | **910.525 MHz / 62.5 kHz / 7 / 5** (MeshCore "USA/Canada (Recommended)") |
+| `AU`, `NZ` | 915–928 MHz | none: set all four values |
+| `IN` | 865–867 MHz | none: set all four values |
+| `KR` | 920–923 MHz | none: set all four values |
+
+- **All pagers of a group need the same `radio`**, just like `channel`. A pager with a different frequency can't hear the others. When changing the radio of an existing group, update **every** pager.
+- The pager checks only the band, not duty-cycle or power rules. The group is responsible for using a frequency that is legal where they are. The TX power stays as it is (not part of the setup).
+- The new settings apply **right away** after COMMIT (the BLE link isn't affected) and at every boot. `CLEAR` goes back to `pager.ini`.
+
 ### Supported YAML subset
 Whatever the frontend's YAML library emits in its default block style is fine (tested with PyYAML output, including sorted keys and `\xE4` / `\U0001F4DE` escapes). In detail:
 - UTF-8 (a BOM is ignored), LF or CRLF, at most **4096 bytes**, lines at most 255 bytes.
 - Indentation with **spaces only** (tabs are rejected). Sequences may sit at the parent key's indentation (`questions:\n- text: …`).
 - `#` comments, `---` / `...` markers.
 - Scalars: plain, `'single'` (`''` = `'`), `"double"` with the escapes `\" \\ \/ \xXX \uXXXX \UXXXXXXXX` (UTF-16 surrogate pairs are combined).
-- Single-line flow lists (`[a, "b, c"]`) and a single-line flow mapping for `channel` (`{name: X, key: Y}`).
+- Single-line flow lists (`[a, "b, c"]`) and single-line flow mappings for `channel` and `radio` (`{name: X, key: Y}`, `{region: EU}`).
 - **Not supported:** anchors/aliases/tags, block scalars (`|`, `>`), multi-line scalars, other flow mappings, unknown keys (they are **errors**, so typos don't go unnoticed).
 
 ---
@@ -85,7 +106,7 @@ Standard responses from the companion protocol:
 
 | Status | Meaning | `line` / message |
 |---|---|---|
-| `0` | OK. The setup is stored **and active right away** | 0 / summary, e.g. `nickname=Anna channel=Familie key=setup questions=2` (`key=build` means the key from `pager.secret.ini`) |
+| `0` | OK. The setup is stored **and active right away** | 0 / summary, e.g. `nickname=Anna channel=Familie key=setup questions=2 radio=EU:869.618/62.5/8/5` (`key=build` means the key from `pager.secret.ini`; `radio=build:…` means the radio from `pager.ini`; the values after the colon are the active MHz/kHz/SF/CR) |
 | `1` | invalid YAML/setup. **Nothing was changed** | line number (1-based, `0` = whole file) / reason in English, e.g. `unknown key 'nicknme'`, `reply longer than 40 bytes` |
 | `2` | flash write failed. Nothing was changed | 0 / `flash write failed` |
 
@@ -104,7 +125,7 @@ app                                   pager
  |  70 02 00 01 <58 bytes>           (DATA @256)
  |  ----------------------------->  00
  |  70 03                            (COMMIT)
- |  ----------------------------->  70 00 00 00 "nickname=Anna channel=Familie key=setup questions=2"
+ |  ----------------------------->  70 00 00 00 "nickname=Anna channel=Familie key=setup questions=2 radio=EU:869.618/62.5/8/5"
 ```
 
 ### What happens on the pager
@@ -112,7 +133,7 @@ app                                   pager
 - **Nickname:** used immediately for sending and in the header. The Bluetooth name (`MeshCore-<nickname>`) changes after the next reboot.
 - **Channel:** exactly one channel with the configured name and key exists afterwards. If the name changed, the channel with the old name is removed. Other channels (e.g. `Public`) aren't touched.
 - The setup is **enforced at every boot**: changing the nickname or the pager channel in the MeshCore app only lasts until the next reboot. To change the setup, upload a new file.
-- Radio settings (frequency etc.) still come from `pager.ini` and aren't part of the setup.
+- **Radio:** with a `radio` block, the pager switches to the new frequency immediately after COMMIT. Without one, it uses `pager.ini`. See "Regions and radio presets" above.
 
 ---
 
