@@ -219,6 +219,12 @@ Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, differ
 - [ ] 7. B's own messages and B's automatic `Mein Standort` answer don't make B's LED blink.
 - [ ] 8. Sending from A doesn't flash A's LED (the TX flash is gone).
 
+### Beep (FRD-020, speaker on GPIO 4 → GND)
+- [ ] 8b. A message from A: B plays a **short double beep**, once.
+- [ ] 8c. Sending from B, and B's automatic `Mein Standort` answer: **no** beep on B.
+- [ ] 8d. The beep doesn't repeat while the LED keeps blinking.
+- [ ] 8e. After a beep, the speaker is silent (no hum or click at rest), and the board doesn't get warm near the pin.
+
 ### Phone icon (FRD-013)
 - [ ] 9. The `📞` reply shows as a **desk phone** (handset on top, body with dial) in the chat list (small) and in the selected block / detail (large).
 - [ ] 10. The MeshCore app still shows the real 📞 emoji.

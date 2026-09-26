@@ -25,6 +25,7 @@ Each functional requirement lives in its own numbered file under [`frd/`](frd/).
 | [FRD-017](frd/FRD-017-ble-pairing-mode.md) | BLE pairing mode (hold 10 s, big PIN, 30 s) | M2 | Implemented |
 | [FRD-018](frd/FRD-018-group-config-file.md) | Group config file `pager.ini` (channel name/key, EU radio) | M2 | Implemented |
 | [FRD-019](frd/FRD-019-location-messages.md) | Location messages `Standort?` (auto-answer) / `Mein Standort` | M3 | Implemented |
+| [FRD-020](frd/FRD-020-message-beep.md) | New-message beep, optional speaker on GPIO 4 (no resistor) | M4 | Implemented |
 
 ## Adding an FRD
 1. Copy an existing file and take the next free number: `frd/FRD-NNN-<kebab-slug>.md`.

@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — New-message beep via speaker on GPIO 4 (FRD-020)
+
+**Request:** a speaker (identified as a plain 8–32 Ω speaker; the user asked for no resistor) should beep on every new message.
+
+**Done:**
+- Env flags `PIN_BUZZER=4` (optional; remove it for no sound) and `PAGER_BUZZER_DRIVE=0`, plus MeshCore's `buzzer.cpp` and the NonBlockingRTTTL library.
+- `UITask::beep()` plays a short double beep (`msg:d=16,o=7,b=180:e,p,e`, ~2.6 kHz) for messages from others, the same trigger as the LED alert, without repeats.
+- **Pin protection for the no-resistor wiring:** `gpio_set_drive_capability(…, GPIO_DRIVE_CAP_0)` at start and on every loop pass while a tone plays (because `tone()` may re-attach the pin), then pin LOW when done. A tone only, never steady HIGH through the coil.
+- Wiring and free-pin list in the flashing guide. Test steps M4-8b–8e.
+
+**Trade-off:** at ~5 mA drive it's quiet (fine indoors). A transistor + `PAGER_BUZZER_DRIVE=3` is the path to more volume.
+
+---
+
 ## 2026-09-26 — Channel key moved out of git (`pager.secret.ini`)
 
 **Trigger:** the user asked to push the feature branch. `github.com/lboel/MSPager` turned out to be a **public fork** of `meshcore-dev/MeshCore`, which GitHub can't make private. Pushing would have published the group key from `pager.ini`.

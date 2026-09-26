@@ -1,6 +1,9 @@
 #include "UITask.h"
 #include "../MyMesh.h"
 #include "target.h"
+#ifdef PIN_BUZZER
+  #include <driver/gpio.h>
+#endif
 
 #define AUTO_OFF_MILLIS     ((unsigned long)PAGER_DISPLAY_TIMEOUT_SECS * 1000UL)
 #define BOOT_SCREEN_MILLIS  5000
@@ -40,6 +43,12 @@ static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pi
 
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
+
+// new-message beep (FRD-020): short double beep ~2.6 kHz
+#define MSG_BEEP  "msg:d=16,o=7,b=180:e,p,e"
+#ifndef PAGER_BUZZER_DRIVE
+  #define PAGER_BUZZER_DRIVE  0
+#endif
 
 // GPS status icons, 8x8, MSB first (header, left of the battery)
 static const uint8_t gps_fix_icon[8]   = { 0x3C, 0x7E, 0xE7, 0xE7, 0x7E, 0x3C, 0x18, 0x18 };  // filled pin
@@ -94,6 +103,10 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
 #ifdef PAGER_LED_PIN
   pinMode(PAGER_LED_PIN, OUTPUT);
   digitalWrite(PAGER_LED_PIN, LOW);
+#endif
+#ifdef PIN_BUZZER
+  _buzzer.begin();   // pin LOW, not quiet
+  gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
 #endif
 
   if (_display != NULL) {
@@ -179,6 +192,7 @@ void UITask::newMsg(uint8_t path_len, const char* from_name, const char* text, i
   addMsg(sender, body, false, pos);
   checkLocationRequest(sender, body);
   _led_alert = true;
+  beep();
   if (_screen == Screen::CHAT || _screen == Screen::BOOT) {
     setScreen(Screen::CHAT);
   }
@@ -420,6 +434,32 @@ void UITask::ledLoop() {
     _led_on = !_led_on;
     digitalWrite(PAGER_LED_PIN, _led_on ? HIGH : LOW);
     _led_next = millis() + (_led_on ? LED_ON_MILLIS : LED_OFF_MILLIS);
+  }
+#endif
+}
+
+// ---------------------------------------------------------------- beep (FRD-020)
+
+// A speaker wired straight to a GPIO (no resistor) is a near short: the pin runs at reduced
+// drive strength, only plays a tone (never steady HIGH) and is left LOW afterwards.
+void UITask::beep() {
+#ifdef PIN_BUZZER
+  _buzzer.play(MSG_BEEP);
+  gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);  // tone setup reconfigures the pin
+  _buzzer_active = true;
+#endif
+}
+
+void UITask::buzzerLoop() {
+#ifdef PIN_BUZZER
+  if (_buzzer.isPlaying()) {
+    _buzzer.loop();   // tone() may (re)attach the pin on each note
+    gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
+  } else if (_buzzer_active) {
+    _buzzer_active = false;
+    pinMode(PIN_BUZZER, OUTPUT);
+    digitalWrite(PIN_BUZZER, LOW);
+    gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
   }
 #endif
 }
@@ -805,6 +845,7 @@ void UITask::loop() {
   checkPairingHold();
   updateFix();
   ledLoop();
+  buzzerLoop();
 
   if (_auto_reply_at && millis() >= _auto_reply_at) {
     _auto_reply_at = 0;

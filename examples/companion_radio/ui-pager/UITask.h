@@ -15,6 +15,10 @@
 #include "../NodePrefs.h"
 #include "PagerLocation.h"
 
+#ifdef PIN_BUZZER
+  #include <helpers/ui/buzzer.h>
+#endif
+
 #ifndef PAGER_CHANNEL_NAME
   #error "ui-pager requires PAGER_CHANNEL_NAME (see env heltec_v4_pager)"
 #endif
@@ -86,6 +90,14 @@ private:
   bool _led_on;
   unsigned long _led_next;
   void ledLoop();
+
+  // new-message beep (FRD-020)
+#ifdef PIN_BUZZER
+  genericBuzzer _buzzer;
+  bool _buzzer_active = false;
+#endif
+  void beep();
+  void buzzerLoop();
 
   // automatic answer to "Standort?" (FRD-019)
   unsigned long _auto_reply_at;

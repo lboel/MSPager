@@ -49,6 +49,7 @@ Cellular coverage is unreliable in the places the group moves (outdoors, events,
 | Button | **PRG** | GPIO 0 |
 | LED | white onboard LED | GPIO 35 (also used as LoRa TX LED) |
 | Battery | 1S LiPo via JST | ADC ctrl 37, VBAT read 1 |
+| Speaker (optional) | small 8–32 Ω speaker, two wires, no resistor ([FRD-020](frd/FRD-020-message-beep.md)) | GPIO 4 + GND |
 
 ### 5.1 Button constraint (RST cannot be reassigned)
 The V4 has two buttons. **Only PRG (GPIO 0) can be read by firmware.** The other button, **RST**, is wired straight to the ESP32-S3 **CHIP_PU/EN** pin. Pressing it resets the chip in hardware before any code runs, so software can't give it another function. The only alternatives are hardware changes (cutting the trace and rewiring, or adding an external button on a free GPIO). We rejected both so that every pager stays identical and unmodified.
