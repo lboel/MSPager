@@ -220,7 +220,7 @@ Pagers **A**, **B** (and **C** for the group test), the same `pager.ini`, differ
 - [ ] 8. Sending from A doesn't flash A's LED (the TX flash is gone).
 
 ### Beep (FRD-020, speaker on GPIO 4 → GND)
-- [ ] 8b. A message from A: B plays a **short double beep**, once.
+- [ ] 8b. A message from A: B plays **three short beeps** (~3 kHz), once.
 - [ ] 8c. Sending from B, and B's automatic `Mein Standort` answer: **no** beep on B.
 - [ ] 8d. The beep doesn't repeat while the LED keeps blinking.
 - [ ] 8e. After a beep, the speaker is silent (no hum or click at rest), and the board doesn't get warm near the pin.

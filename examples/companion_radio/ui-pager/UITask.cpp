@@ -44,10 +44,13 @@ static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pi
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
 
-// new-message beep (FRD-020): short double beep ~2.6 kHz
-#define MSG_BEEP  "msg:d=16,o=7,b=180:e,p,e"
+// new-message beep (FRD-020): 3 x 150 ms at ~3.1 kHz (G7) - small speakers and the ear are
+// most sensitive around 2.5-4 kHz, and longer tones carry more energy than clicks
+#ifndef PAGER_BEEP_MELODY
+  #define PAGER_BEEP_MELODY  "msg:d=8,o=7,b=200:g,16p,g,16p,g"
+#endif
 #ifndef PAGER_BUZZER_DRIVE
-  #define PAGER_BUZZER_DRIVE  0
+  #define PAGER_BUZZER_DRIVE  1
 #endif
 
 // GPS status icons, 8x8, MSB first (header, left of the battery)
@@ -444,7 +447,7 @@ void UITask::ledLoop() {
 // drive strength, only plays a tone (never steady HIGH) and is left LOW afterwards.
 void UITask::beep() {
 #ifdef PIN_BUZZER
-  _buzzer.play(MSG_BEEP);
+  _buzzer.play(PAGER_BEEP_MELODY);
   gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);  // tone setup reconfigures the pin
   _buzzer_active = true;
 #endif

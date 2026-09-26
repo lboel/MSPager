@@ -4,6 +4,18 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Louder beep (option 1: firmware only)
+
+**Request:** make the beep louder. Options offered: 1) firmware only, 2) push-pull on two GPIOs (~4× power, one wire moved), 3) NPN transistor. **The user chose option 1.**
+
+**Done:**
+- Drive strength `PAGER_BUZZER_DRIVE` 0 → **1** (≈5 → ≈10 mA, still within the ESP32-S3's recommended per-pin current).
+- Tone 2.6 → **~3.1 kHz** (G7), closer to where small speakers and the ear are most sensitive.
+- Pattern: 2 × 83 ms → **3 × 150 ms** (more acoustic energy).
+- The melody can be overridden via `PAGER_BEEP_MELODY`.
+
+---
+
 ## 2026-09-26 — New-message beep via speaker on GPIO 4 (FRD-020)
 
 **Request:** a speaker (identified as a plain 8–32 Ω speaker; the user asked for no resistor) should beep on every new message.
