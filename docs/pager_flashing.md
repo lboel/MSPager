@@ -110,6 +110,10 @@ esptool.py --chip esp32s3 -p <PORT> write_flash 0x0 heltec_v4_pager-<version>-<s
 esptool.py --chip esp32s3 -p <PORT> write_flash 0x10000 heltec_v4_pager-<version>-<sha>.bin
 ```
 
+> **For updates, use the app image at `0x10000`, not the `-merged.bin`.** The merged image written at `0x0` also overwrites the NVS partition (`0x9000`), which holds the **Bluetooth pairings**. Setup and settings survive (they live in SPIFFS), but every paired phone/computer then has to **remove the pager and pair again**. Otherwise the pager drops the connection after ~2 s.
+
+> **Linux: "Permission denied" / "port doesn't exist"?** Your user needs access to `/dev/ttyACM0`: install the [PlatformIO udev rules](https://docs.platformio.org/en/latest/core/installation/udev-rules.html) (or add yourself to `dialout` and log in again). `pio run -t upload` can lose the port after its 1200-bps reset. Plain esptool works.
+
 > **Port doesn't show up?** Try a different cable/USB port, use bootloader mode (§2), and on older systems install the CP210x or CH34x USB-serial driver.
 
 ---

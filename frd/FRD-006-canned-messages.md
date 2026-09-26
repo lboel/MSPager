@@ -21,7 +21,7 @@
    5. `Standort?`
    6. `Mein Standort`
 4. The catalogue SHALL be defined in one place in the source (a const array per picker), so it can be changed at compile time.
-5. The picker SHALL show up to 4 options at a time (scrolling with the selection) with the current one highlighted, an `n/N` counter in the title bar, and the hint `1x:↓ 2x:← hold:send`.
+5. The picker SHALL show the current option **enlarged (double size) in an inverted block** (long text scrolls), the previous option small above it and the following options small below it, like the selected chat message (FRD-004). It also shows an `n/N` counter in the title bar and the hint `1x:↓ 2x:← hold:send`. *(Changed 2026-09-26: previously up to 4 small rows with the current one highlighted.)*
 6. After sending, the UI SHALL show `Sent` for about 1 s, then the Chat screen with the own message appended.
 
 ## Acceptance criteria

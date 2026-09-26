@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Implemented |
+| Status | Verified (device test 2026-09-26) |
 | Milestone | M4c |
 | PRD | §7, US-11 |
 | Extends | FRD-013 (📞 glyph), FRD-021 (setup texts) |

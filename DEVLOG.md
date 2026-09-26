@@ -4,6 +4,32 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Pickers: selected option at double size; M4c device test
+
+**Request:** in the send and reply menus, the selected entry should be double size, like the selected message.
+
+**Done:** `UITask::renderPicker()` uses the same layout as `renderChatSelected()`. The previous option is small for context, then the current option sits in an inverted block at size 2 (marquee for long text, emoji at 16×16), then the next options are small. Without a previous option, two following ones fit. The marquee restarts when the option changes (`_option` is part of the scroll key). Firmware `v0.4.3-m4c`, flashed to both pagers as the app image at `0x10000`. Pairings and setup were kept.
+
+**Device test M4c (Anna + Bob, kids setup), all ✅**
+- Send menu `1/12`, the selected entry is large, emoji shown as pictures.
+- `Wo bist du? 📍` shows up on the receiver small in the list and large when selected. The reply menu offers 🏠, 🏫, ⚽ and `Mein Standort`, each large when selected.
+- The ❤️ reply shows as one heart, with no block after it.
+- 🚲 and 🚽 are readable at 8×8 on the real display.
+- Not tested: checklist M4c steps 5 (emoji from the app with a skin tone / unknown emoji) and 7 (marquee with emoji).
+
+---
+
+## 2026-09-26 — Flash update without losing Bluetooth pairings; kids setup on both pagers
+
+**Findings**
+- The **merged image at `0x0` deletes the BLE pairings**: it overwrites the NVS partition (`0x9000`, 20 KB), where the ESP32 stores its bonds. The setup and prefs live in SPIFFS (`0xc90000`) and survive. The symptom: the computer still has the pairing, but the pager drops every connection after ~2 s (authentication failure). This also explains the "lost pairing" in the M4b test. **For updates, use only `firmware.bin` at `0x10000`.** That's how the flashing guide already put it; now it also gives the reason.
+- Confirmed on the device: Bob (merged at `0x0`) had to be paired again. Anna (app at `0x10000`) connected right away, with her setup intact.
+- `build.sh` runs `rm -rf out` at the start. Test files in `out/` are lost on the next build, including the M4b test YAMLs and their key. Local setup files now go in **`pager-setups/`** (gitignored, because they contain group keys).
+
+**Status:** Anna and Bob run `v0.4.2-m4c-51096e0e` with the kids setup (`pager_setup_kids.yaml`, a new group key, 8 questions). Ready for the M4c device test ([checklist](docs/pager_testing.md)).
+
+---
+
 ## 2026-09-26 — Emoji pictures for kids (FRD-022)
 
 **Request:** more emoji, so kids can use the pager. They must show on the pager.

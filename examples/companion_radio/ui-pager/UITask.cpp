@@ -29,7 +29,9 @@
 #define LOC_SHARE    "Mein Standort"   // shown with distance/bearing on the receiving pager
 static const char* const COMPOSE_OPTIONS[] = { "Angekommen?", "Brauche Hilfe", LOC_REQUEST, LOC_SHARE };
 static const char* const REPLY_OPTIONS[]   = { "Ja", "Nein", "OK", "\xF0\x9F\x93\x9E", LOC_REQUEST, LOC_SHARE };  // 4th: U+1F4DE
-#define PICKER_ROWS  4
+#define PICKER_Y0      12   // first row below the title bar
+#define PICKER_ROW_H   9    // small option row
+#define PICKER_SEL_H   18   // selected option: one size-2 row + 1px padding
 #define NUM_COMPOSE  (int)(sizeof(COMPOSE_OPTIONS) / sizeof(COMPOSE_OPTIONS[0]))
 #define NUM_REPLY    (int)(sizeof(REPLY_OPTIONS) / sizeof(REPLY_OPTIONS[0]))
 static_assert(NUM_COMPOSE + PAGER_CFG_MAX_QUESTIONS <= PAGER_MAX_OPTIONS && NUM_REPLY <= PAGER_MAX_OPTIONS
@@ -835,18 +837,24 @@ void UITask::renderPicker(bool reply) {
   renderText(2, 1, _display->width() - count_w - 8, title);
   renderText(_display->width() - count_w - 2, 1, count_w, count);
 
-  // PICKER_ROWS visible, scrolled to keep the current option on screen
-  int first = _option >= PICKER_ROWS ? _option - PICKER_ROWS + 1 : 0;
-  for (int i = first; i < n && i < first + PICKER_ROWS; i++) {
-    int y = 13 + (i - first) * 10;
-    if (i == _option) {
-      _display->setColor(UIColor::title_txt);
-      _display->fillRect(0, y - 1, _display->width(), 10);
-      _display->setColor(UIColor::window_bkg);
-    } else {
-      _display->setColor(UIColor::primary_txt);
-    }
+  // Like the selected chat message: the previous option small for context, the current one
+  // enlarged in an inverted block (long text scrolls), then the next options small.
+  int y = PICKER_Y0;
+  _display->setColor(UIColor::primary_txt);
+  if (_option > 0) {
+    renderText(4, y, _display->width() - 8, opts[_option - 1]);
+    y += PICKER_ROW_H;
+  }
+  _display->setColor(UIColor::title_txt);
+  _display->fillRect(0, y, _display->width(), PICKER_SEL_H);
+  _display->setColor(UIColor::window_bkg);
+  renderMarquee(1, y + 1, _display->width() - 2, opts[_option], 2);
+  y += PICKER_SEL_H + 1;
+
+  _display->setColor(UIColor::primary_txt);
+  for (int i = _option + 1; i < n && y + LINE_H <= HINT_SEP_Y; i++) {
     renderText(4, y, _display->width() - 8, opts[i]);
+    y += PICKER_ROW_H;
   }
 
   renderHint("1x:" ARROW_DOWN " 2x:" ARROW_LEFT " hold:send");
@@ -917,8 +925,8 @@ void UITask::loop() {
     setScreen(Screen::CHAT);
   }
 
-  int scroll_key = (int)_screen * 100 + _sel;
-  if (scroll_key != _scroll_key) {   // new message or screen: marquee starts over
+  int scroll_key = ((int)_screen * 100 + _sel + 1) * 100 + _option;
+  if (scroll_key != _scroll_key) {   // new message, option or screen: marquee starts over
     _scroll_key = scroll_key;
     _scroll_start = millis();
   }
