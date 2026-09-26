@@ -4,6 +4,18 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — ICQ-style "uh-oh" and drive level 3
+
+**Requests:** louder via firmware, and the classic ICQ sound.
+
+**Done:**
+- The message sound is now an **ICQ-style "uh-oh"** melody imitation (`uhoh:d=16,o=7,b=140:8g,32p,8d,c#`), transposed up to ~2.2–3.1 kHz for volume. The original is a voice recording: it can't be reproduced on a square-wave speaker and is copyrighted, so it isn't embedded.
+- **Drive strength 3** (~40 mA, the ESP32-S3's absolute maximum per pin), set in the env **at the user's explicit request** after the advice that level 2 (~20 mA) is the recommended limit.
+
+**Risk accepted by the user:** long-term pin wear with the speaker wired directly. Mitigated by short tones (~0.4 s) and the 50 % duty square wave. Fallback: `PAGER_BUZZER_DRIVE=1–2`, another pin, or a transistor.
+
+---
+
 ## 2026-09-26 — Louder beep (option 1: firmware only)
 
 **Request:** make the beep louder. Options offered: 1) firmware only, 2) push-pull on two GPIOs (~4× power, one wire moved), 3) NPN transistor. **The user chose option 1.**

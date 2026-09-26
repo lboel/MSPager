@@ -24,7 +24,7 @@ This guide covers everything from a new Heltec V4 in its box to a working pager 
 - **RST**: hardware reset. It **always reboots the device** and can't be used for anything else (it's wired to the ESP32's EN pin).
 
 ### Optional: speaker for a message beep
-A small 8–32 Ω speaker beeps three times for every new message. You need **two wires and no resistor**:
+A small 8–32 Ω speaker plays an ICQ-style "uh-oh" for every new message. You need **two wires and no resistor**:
 
 | Speaker pad | Wire | Heltec V4 pin |
 |---|---|---|
@@ -32,7 +32,7 @@ A small 8–32 Ω speaker beeps three times for every new message. You need **tw
 | the other coil pad | **black** | **GND** |
 
 - The coil pads are the two with 8–32 Ω between them (measure with a multimeter). Speaker polarity doesn't matter.
-- The firmware limits the pin's current (~10 mA), so it's moderately loud but safe. For more volume, add an NPN transistor (see [FRD-020](../frd/FRD-020-message-beep.md)).
+- The firmware runs the pin at **maximum drive (~40 mA, the ESP32's absolute limit)** for volume. Tones are short and the pin only draws current half the time, but over time the pin can wear. If the sound gets weak or distorted, set `PAGER_BUZZER_DRIVE` to 1–2 or move to another pin. For more volume, add an NPN transistor (see [FRD-020](../frd/FRD-020-message-beep.md)).
 - A different pin: change `PIN_BUZZER` in `variants/heltec_v4/platformio.ini`. **Don't use** GPIO 0, 1–3, 5, 7–14, 17–21, 34–39, 42, 45, 46 (used by the board or boot pins). Suitable: 4, 6, 15, 16, 47, 48.
 
 ---

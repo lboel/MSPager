@@ -44,10 +44,11 @@ static const uint8_t phone_glyph_2x[32] = {   // 16x16, drawn separately (not pi
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
 
-// new-message beep (FRD-020): 3 x 150 ms at ~3.1 kHz (G7) - small speakers and the ear are
-// most sensitive around 2.5-4 kHz, and longer tones carry more energy than clicks
+// new-message sound (FRD-020): ICQ-style "uh-oh" - short high note, a fourth down, a little
+// slide at the end. Transposed into the ~2-3 kHz range where small speakers are loudest.
+// Alternative plain beep: "msg:d=8,o=7,b=200:g,16p,g,16p,g"
 #ifndef PAGER_BEEP_MELODY
-  #define PAGER_BEEP_MELODY  "msg:d=8,o=7,b=200:g,16p,g,16p,g"
+  #define PAGER_BEEP_MELODY  "uhoh:d=16,o=7,b=140:8g,32p,8d,c#"
 #endif
 #ifndef PAGER_BUZZER_DRIVE
   #define PAGER_BUZZER_DRIVE  1
