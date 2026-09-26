@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-26 — Channel key moved out of git (`pager.secret.ini`)
+
+**Trigger:** the user asked to push the feature branch. `github.com/lboel/MSPager` turned out to be a **public fork** of `meshcore-dev/MeshCore`, which GitHub can't make private. Pushing would have published the group key from `pager.ini`.
+
+**Decision (user):** keep the key out of git.
+
+**Done:**
+- The key moved to a gitignored **`pager.secret.ini`** (template `pager.secret.ini.example`), loaded via `extra_configs` after `pager.ini`. `pager.ini` only holds a placeholder.
+- A missing or invalid secret makes the build fail with a clear `static_assert` hint.
+- The 20 unpushed commits were rewritten with `git filter-branch` so `pager.ini` never contained the key. Verified: 0 occurrences in the branch history. The existing key stays valid (it never left the machine), so flashed pagers don't need a reflash.
+- The docs (FRD-018, flashing guide, PRD) describe passing the key file on privately.
+
+---
+
 ## 2026-09-25 — Hint format `1x / 2x / hold`
 
 **Request:** show hints as `1x:<↑/↓> 2x:<←> hold:<send/open>`, only the options that are possible.

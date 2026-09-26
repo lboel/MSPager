@@ -17,3 +17,6 @@ compile_commands.json
 .venv/
 venv/
 platformio.local.ini
+
+# MSPager group channel key (see pager.secret.ini.example)
+pager.secret.ini

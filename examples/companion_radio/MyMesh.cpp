@@ -1023,7 +1023,7 @@ int MyMesh::findPagerChannel() {
 
 // Enforce the group channel from pager.ini at every boot (FRD-008): exactly one
 // channel named PAGER_CHANNEL_NAME, holding PAGER_CHANNEL_KEY. Duplicates are removed.
-static_assert(sizeof(PAGER_CHANNEL_KEY) == 33, "pager.ini: channel_key must be exactly 32 hex characters");
+static_assert(sizeof(PAGER_CHANNEL_KEY) == 33, "channel key missing or invalid: create pager.secret.ini from pager.secret.ini.example (32 hex characters)");
 
 void MyMesh::ensurePagerChannel() {
   uint8_t key[16];

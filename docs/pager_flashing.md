@@ -53,6 +53,7 @@ cd MSPager
 pio run -e heltec_v4_pager -t upload
 
 # Or build release files (merged + app-only) into ./out:
+cp pager.secret.ini.example pager.secret.ini   # then put the group key in it (see §5.3)
 export FIRMWARE_VERSION=v0.1.0
 sh build.sh build-firmware heltec_v4_pager
 ls out/
@@ -114,15 +115,16 @@ All pagers in a group need the **same radio preset** and the **same `Pager` chan
 - Keep it **≤ 10 characters**. Longer names get cut off on the small display.
 
 ### 5.3 Radio preset & 5.4 Pager channel: automatic
-Nothing to do. Every pager applies the **group config** from [`pager.ini`](../pager.ini) at every boot:
+Nothing to set in the app. Every pager applies the **group config** at every boot. It's compiled in from [`pager.ini`](../pager.ini) (channel name, radio) and **`pager.secret.ini`** (the group key; not in git, create it from `pager.secret.ini.example`):
 - channel **`Pager`** with the group key, visible in the app's channel list
 - radio preset **EU/UK (Narrow)**: 869.618 MHz, BW 62.5, SF 8, CR 5
 
 All pagers flashed from the same checkout meet in the same channel right after flashing. Changes made in the app to this channel or the radio settings are reset on the next reboot.
 
-**Separate group or new key:** generate a new key with `openssl rand -hex 16`, put it into `channel_key` in `pager.ini`, commit, rebuild, and **reflash every pager**.
+**Group key:** everyone who builds pagers for the group needs the **same `pager.secret.ini`**. Pass it on privately; it's gitignored and must never be committed (the repo is public).
+**Separate group or new key:** generate a new key with `openssl rand -hex 16`, put it into `pager.secret.ini`, rebuild, and **reflash every pager**.
 
-> Anyone who can read `pager.ini` can read the group's messages. Keep the repository private.
+> Anyone who has `pager.secret.ini` or a built `.bin` can read the group's messages. Don't publish `.bin` files.
 > To use existing MeshCore repeaters, they must run the same radio preset.
 
 ### 5.5 GPS first fix
