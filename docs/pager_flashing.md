@@ -1,6 +1,6 @@
 # MSPager — Flashing & Setup Guide
 
-This guide covers everything from a new Heltec V4 in its box to a working pager in the group. Budget about 10 minutes per device, plus a few minutes outdoors for the first GPS fix.
+This guide covers everything from a new Heltec V4 in its box to a working pager in the group. The Heltec **V3** and **T114** are supported too, see [§9](#9-other-boards-heltec-v3-heltec-t114) for what differs. Budget about 10 minutes per device, plus a few minutes outdoors for the first GPS fix.
 
 > Product context: [PRD.md](../PRD.md) · Requirements: [FRD.md](../FRD.md)
 
@@ -71,6 +71,9 @@ sh build.sh build-firmware heltec_v4_pager
 ls out/
 #   heltec_v4_pager-v0.1.0-<sha>.bin          (app only, for updates)
 #   heltec_v4_pager-v0.1.0-<sha>-merged.bin   (full image, for first install)
+
+# all pager boards at once (V3, V4, T114), see §9:
+sh build.sh build-pager-firmwares
 ```
 
 **Which file?**
@@ -201,3 +204,26 @@ Optional: a phone with the MeshCore app joined to the `Pager` channel sees the s
 | Pager behaves oddly after an update | Do a full reinstall: **Erase Flash** + merged image (§4), then repeat §5 |
 
 For generic MeshCore flashing and reset topics, see also [docs/faq.md](faq.md).
+
+---
+
+## 9. Other boards: Heltec V3, Heltec T114
+
+Every board needs **its own firmware file**. The files aren't interchangeable (the T114 isn't even an ESP32). All boards run the same pager, the same setup and the same group config, so they can be mixed in one group.
+
+| Board | Env / file prefix | Display | Button | GPS | Speaker |
+|---|---|---|---|---|---|
+| Heltec V4 (OLED) | `heltec_v4_pager` | 0.96" OLED 128×64 | PRG | built-in connector | optional, GPIO 4 |
+| Heltec V3 | `heltec_v3_pager` | 0.96" OLED 128×64 | PRG | none, messages carry `[no GPS]` | not yet |
+| Heltec T114 (with TFT) | `heltec_t114_pager` | 1.14" TFT 240×135 | USER | optional module | not yet |
+
+**Build:** `sh build.sh build-pager-firmwares` builds all three into `./out`, or `sh build.sh build-firmware heltec_t114_pager` for one. On an Apple Silicon Mac, the T114 build needs Rosetta (`softwareupdate --install-rosetta`), because PlatformIO's ARM compiler is an x86 binary.
+
+**Heltec V3:** same files and flashing steps as the V4 (§2–§4), with the V3 file.
+
+**Heltec T114:** an nRF52840, so there's no esptool. The build writes `heltec_t114_pager-<version>-<sha>.uf2` (and a `.zip` for DFU).
+1. Connect the T114 via USB and **double-press RST** quickly. A USB drive appears.
+2. Copy the `.uf2` file onto that drive. The T114 reboots into the pager when the copy is done.
+3. Updates work the same way, and settings and pairings are kept. For a clean start, erase the flash with the MeshCore web flasher first.
+
+The T114 shows the same 128×64 layout as the OLED, scaled to its larger TFT (white on black). The **LED** blinks for new messages like on the V4.

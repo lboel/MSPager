@@ -1123,7 +1123,7 @@ void MyMesh::loadPagerConfig() {
 bool MyMesh::savePagerConfig(const PagerConfig& cfg) {
   int n = pagerCfgSerialize(cfg, pager_cfg_blob, sizeof(pager_cfg_blob));
   if (n <= 0) return false;
-  File file = _store->getPrimaryFS()->open(PAGER_CFG_FILE, "w", true);   // pager env is ESP32-only
+  File file = _store->openForWrite(PAGER_CFG_FILE);
   if (!file) return false;
   bool ok = file.write(pager_cfg_blob, n) == (size_t)n;
   file.close();

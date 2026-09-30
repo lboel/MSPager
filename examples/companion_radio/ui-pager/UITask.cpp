@@ -1,8 +1,12 @@
 #include "UITask.h"
 #include "../MyMesh.h"
 #include "target.h"
-#ifdef PIN_BUZZER
+#if defined(PIN_BUZZER) && defined(ESP32)
   #include <driver/gpio.h>
+  // speaker straight on the pin: reduced drive strength (ESP32 only)
+  #define BUZZER_SET_DRIVE()  gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE)
+#else
+  #define BUZZER_SET_DRIVE()
 #endif
 
 #define AUTO_OFF_MILLIS     ((unsigned long)PAGER_DISPLAY_TIMEOUT_SECS * 1000UL)
@@ -39,6 +43,9 @@ static_assert(NUM_COMPOSE + PAGER_CFG_MAX_QUESTIONS <= PAGER_MAX_OPTIONS && NUM_
 
 // 📞 and the other emoji are drawn as glyphs: PagerText.h / EmojiGlyphs.h (FRD-013, FRD-022)
 
+#ifndef PAGER_LED_ON
+  #define PAGER_LED_ON   HIGH   // LOW for boards whose LED lights when the pin is low (T114)
+#endif
 #define LED_ON_MILLIS    100   // new-message blink (FRD-014)
 #define LED_OFF_MILLIS   900
 
@@ -118,11 +125,11 @@ void UITask::begin(DisplayDriver* display, SensorManager* sensors, NodePrefs* no
   user_btn.begin();
 #ifdef PAGER_LED_PIN
   pinMode(PAGER_LED_PIN, OUTPUT);
-  digitalWrite(PAGER_LED_PIN, LOW);
+  digitalWrite(PAGER_LED_PIN, !PAGER_LED_ON);
 #endif
 #ifdef PIN_BUZZER
   _buzzer.begin();   // pin LOW, not quiet
-  gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
+  BUZZER_SET_DRIVE();
 #endif
 
   if (_display != NULL) {
@@ -477,13 +484,13 @@ void UITask::ledLoop() {
   if (!_led_alert) {
     if (_led_on) {
       _led_on = false;
-      digitalWrite(PAGER_LED_PIN, LOW);
+      digitalWrite(PAGER_LED_PIN, !PAGER_LED_ON);
     }
     return;
   }
   if (millis() >= _led_next) {
     _led_on = !_led_on;
-    digitalWrite(PAGER_LED_PIN, _led_on ? HIGH : LOW);
+    digitalWrite(PAGER_LED_PIN, _led_on ? PAGER_LED_ON : !PAGER_LED_ON);
     _led_next = millis() + (_led_on ? LED_ON_MILLIS : LED_OFF_MILLIS);
   }
 #endif
@@ -496,7 +503,7 @@ void UITask::ledLoop() {
 void UITask::beep() {
 #ifdef PIN_BUZZER
   _buzzer.play(PAGER_BEEP_MELODY);
-  gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);  // tone setup reconfigures the pin
+  BUZZER_SET_DRIVE();  // tone setup reconfigures the pin
   _buzzer_active = true;
 #endif
 }
@@ -505,12 +512,12 @@ void UITask::buzzerLoop() {
 #ifdef PIN_BUZZER
   if (_buzzer.isPlaying()) {
     _buzzer.loop();   // tone() may (re)attach the pin on each note
-    gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
+    BUZZER_SET_DRIVE();
   } else if (_buzzer_active) {
     _buzzer_active = false;
     pinMode(PIN_BUZZER, OUTPUT);
     digitalWrite(PIN_BUZZER, LOW);
-    gpio_set_drive_capability((gpio_num_t)PIN_BUZZER, (gpio_drive_cap_t)PAGER_BUZZER_DRIVE);
+    BUZZER_SET_DRIVE();
   }
 #endif
 }

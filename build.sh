@@ -17,6 +17,7 @@ Commands:
   build-companion-firmwares: Build all companion firmwares for all build targets.
   build-repeater-firmwares: Build all repeater firmwares for all build targets.
   build-room-server-firmwares: Build all chat room server firmwares for all build targets.
+  build-pager-firmwares: Build all MSPager firmwares (heltec_v3, heltec_v4, heltec_t114).
 
 Examples:
 Build firmware for the "RAK_4631_repeater" device target
@@ -256,6 +257,13 @@ build_kiss_modem_firmwares() {
 
 }
 
+build_pager_firmwares() {
+
+  # MSPager: every [env:*_pager]
+  build_all_firmwares_by_suffix "_pager"
+
+}
+
 build_firmwares() {
   build_companion_firmwares
   build_repeater_firmwares
@@ -292,6 +300,8 @@ elif [[ $1 == "build-repeater-firmwares" ]]; then
   build_repeater_firmwares
 elif [[ $1 == "build-room-server-firmwares" ]]; then
   build_room_server_firmwares
+elif [[ $1 == "build-pager-firmwares" ]]; then
+  build_pager_firmwares
 elif [[ $1 == "build-kiss-radio-firmwares" ]]; then
   build_kiss_modem_firmwares
 elif [[ $1 == "get-companion-firmwares-to-build" ]]; then

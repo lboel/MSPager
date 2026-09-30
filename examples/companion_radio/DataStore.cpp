@@ -145,6 +145,10 @@ File DataStore::openRead(const char* filename) {
 #endif
 }
 
+File DataStore::openForWrite(const char* filename) {
+  return ::openWrite(_fs, filename);
+}
+
 File DataStore::openRead(FILESYSTEM* fs, const char* filename) {
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
   return fs->open(filename, FILE_O_READ);

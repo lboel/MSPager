@@ -4,6 +4,24 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-30 — Heltec V3 and T114 builds
+
+**Request:** support the Heltec T114 (different display size), and build firmware for T114 and V3 too. The buzzer can be left out for now.
+
+**Done**
+- New envs `heltec_v3_pager` (ESP32-S3, same OLED as the V4) and `heltec_t114_pager` (nRF52840, 240×135 ST7789 TFT). The shared pager flags/sources are now in `[pager_common]` (platformio.ini), and `heltec_v4_pager` uses it too.
+- `sh build.sh build-pager-firmwares` builds every `*_pager` env: `.bin` + `-merged.bin` for V3/V4, `.uf2` + `.zip` for T114.
+- **T114 display:** the upstream `ST7789Display` draws with proportional Arial fonts and scales each primitive, so the pager's 6×8 grid, the CP437 arrows/umlauts, size-3 PIN and emoji would look wrong. The new `ST7789CanvasDisplay` draws into a 128×64 `GFXcanvas1` exactly like `SSD1306Display` does, then scales it on `endFrame()` (x: 240/128 nearest neighbour, y: 2×, centred). The UI code is unchanged.
+- Portability: the buzzer drive-strength calls are ESP32-only (`BUZZER_SET_DRIVE()`); the LED polarity is `PAGER_LED_ON` (T114: `LOW`); the setup file is written through the new `DataStore::openForWrite()` instead of the ESP32-only `open(…, "w", true)`.
+- Sizes: T114 flash 65 % (462 KB of 712 KB), RAM 70 %. V3 flash 39 %, RAM 58 %.
+- Tests: all 60 native tests pass. On macOS clang they need `PLATFORMIO_BUILD_FLAGS="-include stdlib.h"`, because upstream `ConfigSerializer.cpp` misses `<stdlib.h>` (this is older than this change; on Linux it builds as-is).
+
+**Decisions:** no buzzer on V3/T114 yet. V3 has no GPS (location messages carry `[no GPS]`). T114 gets `ENV_INCLUDE_GPS=1` for the optional module, like the upstream T114 companion.
+
+**Open:** device test on a real V3 and T114 (display scaling, button, LED, BLE setup upload, `/pager_cfg` on LittleFS).
+
+---
+
 ## 2026-09-26 — Radio region and frequency in the setup YAML (FRD-023)
 
 **Request:** a region/country setting in the YAML, so the MHz can be controlled through it.
