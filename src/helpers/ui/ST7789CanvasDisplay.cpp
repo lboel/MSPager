@@ -136,18 +136,22 @@ void ST7789CanvasDisplay::drawBitmapChar(unsigned char c) {
   }
 }
 
-// large font glyph, centred on the 5*sz wide GFX glyph box, top of the capitals where the
-// GFX capitals start. false: not in the font
-bool ST7789CanvasDisplay::drawBigChar(unsigned char c) {
+// panel-resolution font glyph, centred on the 5*sz wide GFX glyph box, baseline where the GFX
+// capitals end (size 1: 11px caps + 3px descender fill the 16px row). false: not in the font
+bool ST7789CanvasDisplay::drawFontChar(unsigned char c) {
   uint16_t u = cp437ToUnicode(c);
   if (u == 0) return false;
-  big.setFont(_text_size == 2 ? u8g2_font_inb24_mf : u8g2_font_inb38_mn);
+  switch (_text_size) {
+    case 1:  big.setFont(u8g2_font_t0_17b_mf); break;
+    case 2:  big.setFont(u8g2_font_inb24_mf); break;
+    default: big.setFont(u8g2_font_inb38_mn); break;
+  }
   big.setFontMode(1);   // transparent - after setFont(), which resets it to opaque (black bg box)
   if (!u8g2_IsGlyph(&big.u8g2, u)) return false;
   if (u == ' ') return true;
   int adv = u8g2_GetGlyphWidth(&big.u8g2, u);
   int box = mapX(_x + 5 * _text_size) - mapX(_x);
-  int baseline = mapY(_y) + 7 * _text_size * SCALE_Y - 2;
+  int baseline = mapY(_y) + (_text_size == 1 ? 13 : 7 * _text_size * SCALE_Y - 2);
   big.setForegroundColor(_color);
   big.drawGlyph(mapX(_x) + (box - adv) / 2, baseline, u);
   return true;
@@ -157,7 +161,7 @@ void ST7789CanvasDisplay::print(const char* str) {
   for (const unsigned char* p = (const unsigned char*)str; *p; p++) {
     if (*p == '\n') { _x = 0; _y += 8 * _text_size; continue; }
     if (*p == '\r') continue;
-    if (_text_size == 1 || !drawBigChar(*p)) drawBitmapChar(*p);
+    if (!drawFontChar(*p)) drawBitmapChar(*p);
     _x += 6 * _text_size;   // GFX advance, so getTextWidth() and layouts stay as on the OLED
   }
 }

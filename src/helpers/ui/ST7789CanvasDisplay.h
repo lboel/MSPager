@@ -9,8 +9,9 @@
 // ST7789 TFT that behaves like SSD1306Display: callers draw in 128x64 coordinates with the
 // Adafruit GFX 6x8 font (CP437) metrics, so layouts made for the 128x64 OLED fit unchanged.
 // Drawing happens at panel resolution (x: 240/128 nearest neighbour, y: 2x, centred):
-// shapes, bitmaps and size-1 text are the scaled OLED pixels, while text size 2 and 3 uses
-// real large fonts (Inconsolata Bold) instead of blown-up 5x7 pixels.
+// shapes and bitmaps are the scaled OLED pixels, text uses real fonts instead of blown-up
+// 5x7 pixels (size 1: t0_17b, size 2/3: Inconsolata Bold). Characters missing from a font
+// (CP437 arrows, block) fall back to the scaled bitmap font.
 class ST7789CanvasDisplay : public DisplayDriver {
   ST7789Spi display;
   GFXcanvas1 canvas;    // panel resolution
@@ -23,7 +24,7 @@ class ST7789CanvasDisplay : public DisplayDriver {
   void powerOn();
   void fillLogical(int x, int y, int w, int h);
   void drawBitmapChar(unsigned char c);
-  bool drawBigChar(unsigned char c);
+  bool drawFontChar(unsigned char c);
 public:
   ST7789CanvasDisplay() : DisplayDriver(128, 64),
       display(&SPI1, PIN_TFT_RST, PIN_TFT_DC, PIN_TFT_CS, GEOMETRY_RAWMODE, 240, 135),
