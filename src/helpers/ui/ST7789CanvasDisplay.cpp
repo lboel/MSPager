@@ -74,7 +74,6 @@ bool ST7789CanvasDisplay::begin() {
   glyph.cp437(true);   // same 256 char 'Code Page 437' font as SSD1306Display
   glyph.setTextWrap(false);
   big.begin(canvas);
-  big.setFontMode(1);  // transparent
   return true;
 }
 
@@ -143,6 +142,7 @@ bool ST7789CanvasDisplay::drawBigChar(unsigned char c) {
   uint16_t u = cp437ToUnicode(c);
   if (u == 0) return false;
   big.setFont(_text_size == 2 ? u8g2_font_inb24_mf : u8g2_font_inb38_mn);
+  big.setFontMode(1);   // transparent - after setFont(), which resets it to opaque (black bg box)
   if (!u8g2_IsGlyph(&big.u8g2, u)) return false;
   if (u == ' ') return true;
   int adv = u8g2_GetGlyphWidth(&big.u8g2, u);
