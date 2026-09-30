@@ -65,6 +65,8 @@ private:
   unsigned long _next_refresh, _auto_off, _boot_until, _next_batt_chck;
   char _alert[40];
   unsigned long _alert_expiry;
+  uint16_t _batt_mv;                // battery icon value, read every PAGER_BATT_READ_MILLIS
+  unsigned long _next_batt_read;
 
   // inbox ring buffer, chronological access via msgAt(0 = oldest)
   PagerMsg _inbox[PAGER_INBOX_SIZE];
@@ -162,6 +164,8 @@ public:
     _fix_millis = _next_fix_check = _auto_reply_at = 0;
     _auto_reply_to[0] = 0;
     _alert_expiry = 0;
+    _batt_mv = 0;
+    _next_batt_read = 0;
     _inbox_head = _inbox_count = 0;
     _sel = -1;
     _option = _num_opts = 0;

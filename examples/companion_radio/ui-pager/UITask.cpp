@@ -18,6 +18,9 @@
 #ifndef BATT_MAX_MILLIVOLTS
   #define BATT_MAX_MILLIVOLTS 4200
 #endif
+#ifndef PAGER_BATT_READ_MILLIS
+  #define PAGER_BATT_READ_MILLIS  10000   // battery icon refresh
+#endif
 
 // 128x64 layout, 6x8 font (21 columns)
 #define CHAR_W        6
@@ -649,10 +652,15 @@ void UITask::renderMarquee(int x, int y, int w, const char* str, int sz) {
   _scrolling = true;
 }
 
-// draws the battery icon top right, returns its left x
+// draws the battery icon top right, returns its left x.
+// Not read per frame: each reading switches the battery divider on (V3: GPIO37, T114: P0.06),
+// which makes the charger LED flash on USB without a battery - at marquee frame rate, fast.
 int UITask::renderBattery() {
-  uint16_t mv = getBattMilliVolts();
-  int pct = ((int)mv - BATT_MIN_MILLIVOLTS) * 100 / (BATT_MAX_MILLIVOLTS - BATT_MIN_MILLIVOLTS);
+  if (_next_batt_read == 0 || millis() >= _next_batt_read) {
+    _batt_mv = getBattMilliVolts();
+    _next_batt_read = millis() + PAGER_BATT_READ_MILLIS;
+  }
+  int pct = ((int)_batt_mv - BATT_MIN_MILLIVOLTS) * 100 / (BATT_MAX_MILLIVOLTS - BATT_MIN_MILLIVOLTS);
   if (pct < 0) pct = 0;
   if (pct > 100) pct = 100;
 

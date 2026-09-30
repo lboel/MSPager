@@ -18,6 +18,8 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 **Decisions:** no buzzer on V3/T114 yet. V3 has no GPS (location messages carry `[no GPS]`). T114 gets `ENV_INCLUDE_GPS=1` for the optional module, like the upstream T114 companion.
 
+**Fix after the first device test:** on USB without a battery, the red charger LED of both boards flashed once per second, and fast while a selected message scrolled. Cause: `renderBattery()` read the battery on every frame (50 ms during the marquee), and each reading switches the battery divider on (V3 GPIO37, T114 P0.06). The icon now reads it every 10 s (`PAGER_BATT_READ_MILLIS`).
+
 **Open:** device test on a real V3 and T114 (display scaling, button, LED, BLE setup upload, `/pager_cfg` on LittleFS).
 
 ---
