@@ -3,23 +3,33 @@
 #include "DisplayDriver.h"
 #include <SPI.h>
 #include <Adafruit_GFX.h>
+#include <U8g2_for_Adafruit_GFX.h>
 #include "ST7789Spi.h"
 
-// ST7789 TFT that draws exactly like SSD1306Display: a 128x64 1-bit canvas with the Adafruit GFX
-// 6x8 font (CP437), scaled to the panel on endFrame(). Unlike ST7789Display (Arial fonts, scaled
-// per primitive), layouts made for the 128x64 OLED look the same, pixel for pixel.
-// Horizontal scale: nearest neighbour (240/128 = 1.875), vertical: 2x, centred.
+// ST7789 TFT that behaves like SSD1306Display: callers draw in 128x64 coordinates with the
+// Adafruit GFX 6x8 font (CP437) metrics, so layouts made for the 128x64 OLED fit unchanged.
+// Drawing happens at panel resolution (x: 240/128 nearest neighbour, y: 2x, centred):
+// shapes, bitmaps and size-1 text are the scaled OLED pixels, while text size 2 and 3 uses
+// real large fonts (Inconsolata Bold) instead of blown-up 5x7 pixels.
 class ST7789CanvasDisplay : public DisplayDriver {
   ST7789Spi display;
-  GFXcanvas1 canvas;
+  GFXcanvas1 canvas;    // panel resolution
+  GFXcanvas1 glyph;     // scratch for one scaled-bitmap character
+  U8G2_FOR_ADAFRUIT_GFX big;
   bool _isOn;
   uint16_t _color;
+  int _x, _y, _text_size;
 
   void powerOn();
+  void fillLogical(int x, int y, int w, int h);
+  void drawBitmapChar(unsigned char c);
+  bool drawBigChar(unsigned char c);
 public:
   ST7789CanvasDisplay() : DisplayDriver(128, 64),
       display(&SPI1, PIN_TFT_RST, PIN_TFT_DC, PIN_TFT_CS, GEOMETRY_RAWMODE, 240, 135),
-      canvas(128, 64) { _isOn = false; _color = 1; }
+      canvas(240, 135), glyph(18, 24) {
+    _isOn = false; _color = 1; _x = _y = 0; _text_size = 1;
+  }
   bool begin();
 
   bool isOn() override { return _isOn; }
@@ -28,7 +38,6 @@ public:
   void clear() override;
   void startFrame(ColorVal bkg = UIColor::window_bkg) override;
   void setTextSize(int sz) override;
-  void setTextWrap(bool wrap) override { canvas.setTextWrap(wrap); }
   void setColor(ColorVal c) override;
   void setCursor(int x, int y) override;
   void print(const char* str) override;

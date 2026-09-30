@@ -20,6 +20,8 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 **Fix after the first device test:** on USB without a battery, the red charger LED of both boards flashed once per second, and fast while a selected message scrolled. Cause: `renderBattery()` read the battery on every frame (50 ms during the marquee), and each reading switches the battery divider on (V3 GPIO37, T114 P0.06). The icon now reads it every 10 s (`PAGER_BATT_READ_MILLIS`).
 
+**T114 large text:** size-2 text (selected message, picker) looked pixelated: the 5×7 font was doubled on the canvas and then scaled 1.875×/2× again. `ST7789CanvasDisplay` now draws on a 240×135 canvas (panel resolution). Shapes, emoji and size-1 text stay the scaled OLED pixels, but size 2 uses Inconsolata Bold 24 px (`u8g2_font_inb24_mf`, with umlauts) and size 3 (pairing PIN) Inconsolata Bold 38 px digits, from `U8g2_for_Adafruit_GFX` (OFL font, BSD library). Glyphs sit in the GFX cells (same advance, same `getTextWidth()`), so the layout is unchanged. Characters missing from the font (arrows, block) fall back to the scaled bitmap. Flash +14.5 KB.
+
 **Open:** device test on a real V3 and T114 (display scaling, button, LED, BLE setup upload, `/pager_cfg` on LittleFS).
 
 ---
