@@ -76,6 +76,17 @@
 #define PAGER_CFG_RESULT_INVALID      1
 #define PAGER_CFG_RESULT_IO_ERROR     2
 #define PAGER_CFG_FILE                "/pager_cfg"
+// firmware update over BLE (FRD-024), same result frame layout as RESP_CODE_PAGER_CONFIG
+#define CMD_PAGER_OTA                 0x71
+#define RESP_CODE_PAGER_OTA           0x71
+#define PAGER_OTA_OP_INFO             0   // board, firmware version, update method
+#define PAGER_OTA_OP_BEGIN            1   // uint32 image size, 16 byte MD5 (ESP32)
+#define PAGER_OTA_OP_DATA             2   // uint32 offset, uint8 ack, image bytes (ESP32)
+#define PAGER_OTA_OP_END              3   // verify, then restart into the new image (ESP32)
+#define PAGER_OTA_OP_ABORT            4
+#define PAGER_OTA_OP_DFU              0x10   // restart into the BLE DFU bootloader (nRF52)
+#define PAGER_OTA_RESTART_MILLIS      1000   // lets the result frame go out first
+#include "PagerOta.h"
 #endif
 
 // Stats sub-types for CMD_GET_STATS
@@ -1255,6 +1266,80 @@ void MyMesh::handlePagerConfigCmd(size_t len) {
 }
 #endif
 
+#ifdef PAGER_CHANNEL_NAME
+// RESP_CODE_PAGER_OTA, status (0 = OK, 1 = failed), line (always 0), message
+void MyMesh::writePagerOtaResult(uint8_t status, const char* msg) {
+  int i = 0;
+  out_frame[i++] = RESP_CODE_PAGER_OTA;
+  out_frame[i++] = status;
+  out_frame[i++] = 0;
+  out_frame[i++] = 0;
+  int n = strlen(msg);
+  if (n > MAX_FRAME_SIZE - i) n = MAX_FRAME_SIZE - i;
+  memcpy(&out_frame[i], msg, n);
+  i += n;
+  _serial->writeFrame(out_frame, i);
+}
+
+// DATA frames only get a response when the client asks for one (ack byte), so it can
+// send several frames per round trip; errors are only reported on those frames too.
+void MyMesh::handlePagerOtaCmd(size_t len) {
+  static uint32_t next_offset;
+  static bool failed;
+  char msg[80];
+  uint8_t op = cmd_frame[1];
+  if (op == PAGER_OTA_OP_INFO) {
+    const char* kind = pagerOtaKind() == PagerOtaKind::ESP32_APP ? "esp32"
+                     : pagerOtaKind() == PagerOtaKind::NRF_DFU ? "nrf-dfu" : "none";
+    snprintf(msg, sizeof(msg), "board=%s fw=%s ota=%s", pagerOtaBoard(), FIRMWARE_VERSION, kind);
+    writePagerOtaResult(0, msg);
+  } else if (op == PAGER_OTA_OP_BEGIN && len >= 2 + 4 + 16) {
+    uint32_t size;
+    memcpy(&size, &cmd_frame[2], 4);
+    next_offset = 0;
+    failed = !pagerOtaBegin(size, &cmd_frame[6], msg, sizeof(msg));
+    writePagerOtaResult(failed ? 1 : 0, failed ? msg : "ready");
+  } else if (op == PAGER_OTA_OP_DATA && len >= 2 + 4 + 1) {
+    uint32_t offset;
+    memcpy(&offset, &cmd_frame[2], 4);
+    bool ack = cmd_frame[6] != 0;
+    size_t n = len - 7;
+    if (!failed) {
+      if (offset != next_offset) {
+        snprintf(msg, sizeof(msg), "offset %lu, expected %lu", (unsigned long)offset, (unsigned long)next_offset);
+        pagerOtaAbort();
+        failed = true;
+      } else if (!pagerOtaWrite(&cmd_frame[7], n, msg, sizeof(msg))) {
+        failed = true;
+      } else {
+        next_offset += n;
+      }
+    }
+    if (ack) {
+      if (failed) writePagerOtaResult(1, pagerOtaActive() ? "failed" : "no update in progress");
+      else writeOKFrame();
+    }
+  } else if (op == PAGER_OTA_OP_END) {
+    if (pagerOtaEnd(msg, sizeof(msg))) {
+      writePagerOtaResult(0, msg);
+      _pager_restart_at = futureMillis(PAGER_OTA_RESTART_MILLIS);
+    } else {
+      writePagerOtaResult(1, msg);
+    }
+    failed = true;   // the next update starts with BEGIN
+  } else if (op == PAGER_OTA_OP_ABORT) {
+    pagerOtaAbort();
+    failed = true;
+    writeOKFrame();
+  } else if (op == PAGER_OTA_OP_DFU && pagerOtaKind() == PagerOtaKind::NRF_DFU) {
+    writePagerOtaResult(0, "restarting into DFU mode");
+    _pager_restart_at = futureMillis(PAGER_OTA_RESTART_MILLIS);
+  } else {
+    writeErrFrame(ERR_CODE_ILLEGAL_ARG);
+  }
+}
+#endif
+
 const char *MyMesh::getNodeName() {
   return _prefs.node_name;
 }
@@ -2276,6 +2361,8 @@ void MyMesh::handleCmdFrame(size_t len) {
 #ifdef PAGER_CHANNEL_NAME
   } else if (cmd_frame[0] == CMD_PAGER_CONFIG && len >= 2) {
     handlePagerConfigCmd(len);
+  } else if (cmd_frame[0] == CMD_PAGER_OTA && len >= 2) {
+    handlePagerOtaCmd(len);
 #endif
   } else if (cmd_frame[0] == CMD_SEND_RAW_PACKET && len >= 4) {
     auto pkt = obtainNewPacket();
@@ -2527,6 +2614,12 @@ void MyMesh::loop() {
 
 #ifdef DISPLAY_CLASS
   if (_ui) _ui->setHasConnection(_serial->isConnected());
+#endif
+
+#ifdef PAGER_CHANNEL_NAME
+  if (_pager_restart_at && millisHasNowPassed(_pager_restart_at)) {
+    pagerOtaRestart();   // after a firmware update (FRD-024), doesn't return
+  }
 #endif
 }
 

@@ -149,5 +149,50 @@ bin/pager_setup.py clear  <address>
 
 For a Web Bluetooth frontend, the same flow is: `requestDevice({filters: [{services: [SERVICE]}]})` → `getPrimaryService` → `startNotifications()` on TX → for each frame, `writeValueWithResponse()` on RX, then wait for the next notification whose first byte is `00`, `01` or `70`.
 
-## 5. Security
-The YAML contains the **group key**. Anyone with the file can read the group's messages. The frontend shouldn't store it longer than needed, and shouldn't send it anywhere other than to the pager. The BLE link itself is encrypted (PIN pairing).
+## 5. Firmware update over BLE (`0x71`, FRD-024)
+
+Firmware with update support can be updated over Bluetooth. **The first install needs USB.** Command **`0x71`** (`CMD_PAGER_OTA`), same connection and pairing as above. The result frame has the same layout as the setup RESULT: `71 <status:u8> <line:u16 = 0> <message>`, status `0` = OK, `1` = failed.
+
+| Op | Name | Request | Response |
+|---|---|---|---|
+| `0x00` | INFO | `71 00` | RESULT `board=<env> fw=<version> ota=<esp32\|nrf-dfu>` |
+| `0x01` | BEGIN | `71 01 <size:u32> <md5:16 bytes>` (ESP32) | RESULT `ready`, or the reason (e.g. image too large) |
+| `0x02` | DATA | `71 02 <offset:u32> <ack:u8> <image bytes>` (ESP32, **160 bytes recommended**) | **only if `ack` ≠ 0**: OK (`00`), or RESULT status 1 if anything failed since BEGIN |
+| `0x03` | END | `71 03` (ESP32) | RESULT `OK, restarting` (the pager restarts ~1 s later into the new image), or the reason |
+| `0x04` | ABORT | `71 04` | OK |
+| `0x10` | DFU | `71 10` (nRF52) | RESULT, then the pager restarts ~1 s later into the **BLE DFU bootloader** |
+
+**ESP32 (V3, V4), `ota=esp32`:** the file is the **app image** (`<env>-<version>-<sha>.bin`, **not** `-merged.bin`: it starts with `0xE9`, and the app descriptor magic `0xABCD5432` is at offset 32).
+- BEGIN with the size and the MD5 of the whole file, then DATA frames in order.
+- Set `ack` on **every 4th frame** and on the last one, and wait for the answer before sending more. The pager's BLE receive queue holds 4 frames, and it answers at most every 60 ms, so acknowledging every frame would be ~4× slower.
+- END checks the size, the MD5 and the **board marker** (below). Only then is the new image marked bootable. On any failure the running firmware stays as it is.
+- The image goes into the second app slot. Settings, setup and Bluetooth pairings are kept.
+
+**nRF52 (T114), `ota=nrf-dfu`:** the file is the **DFU package** (`<env>-<version>-<sha>.zip` with `manifest.json`, `firmware.bin`, `firmware.dat`).
+- Send DFU. The pager restarts into its bootloader, which advertises the Nordic legacy DFU service `00001530-1212-efde-1523-785feabcd123` (as `AdaDFU` or similar). Connect to it (a new device for the OS).
+- Nordic **legacy DFU**, as in `bin/pager_ota.py`: control point `…1531` (write + notify), packet `…1532` (write without response).
+  1. `01 04` (start, application), then on the packet characteristic 12 bytes: sizes softdevice `0`, bootloader `0`, app (u32 LE each). Wait for `10 01 01`.
+  2. `02 00`, the `firmware.dat` bytes as a packet, `02 01`. Wait for `10 02 01`.
+  3. `08 0a 00` (receipt notification every 10 packets), then `03`. Send `firmware.bin` in 20-byte packets, and after every 10th wait for `11 <bytes received:u32>`. At the end, wait for `10 03 01`.
+  4. `04` (validate), wait for `10 04 01`. Then `05`: the bootloader activates the image and restarts.
+
+**Board marker:** every pager image contains the string `MSPAGER-BOARD:<env>` followed by a NUL, e.g. `MSPAGER-BOARD:heltec_v3_pager`. INFO reports the same `<env>` as `board=`. Clients SHALL refuse a file whose marker doesn't match, so an image for another board can't make a pager unusable. The ESP32 update also checks it on the pager.
+
+## 6. Group password → channel key (FRD-025)
+
+A client can derive the 128-bit channel key from a **group password** instead of handling hex keys. Everyone who enters the same password and channel name gets the same key; the pager only ever sees the resulting hex key in the setup YAML. The derivation is fixed. **Changing any detail would split groups**, so a future variant needs a new salt prefix (`…/v2/…`).
+
+```
+password'  = NFC(password), lowercased, split at whitespace and - _ . , ; : + /, empty parts dropped, joined with "-"
+salt       = UTF-8("MSPager/v1/channel-key/" + channel name)     (channel name exactly as in the YAML)
+key        = PBKDF2-HMAC-SHA256(UTF-8(password'), salt, 600000 iterations, 16 bytes)
+channel.key = lowercase hex(key)
+```
+
+Test vector: password `Tulip  Harbor-orbit_PASTE`, channel `Familie` → `bf1722a8bf0556be4ee86abe8b953878`.
+
+- Anyone in radio range can record the traffic and try passwords offline, so the password is the whole security. **Use 4 random words** from a large list (the web app uses the EFF large wordlist, 7776 words: 4 words ≈ 52 bits). The slow KDF makes each guess cost 600,000 hash rounds. Don't use a sentence or a name.
+- Clients shouldn't store the password.
+
+## 7. Security
+The YAML contains the **group key** (and a group password, if used, gives it too). Anyone with the file can read the group's messages. The frontend shouldn't store it longer than needed, and shouldn't send it anywhere other than to the pager. The BLE link itself is encrypted (PIN pairing).

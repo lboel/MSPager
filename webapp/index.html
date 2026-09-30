@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MSPager Setup</title>
+<meta name="description" content="Set up and update MSPager pagers over Bluetooth">
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --text: #1d1d1b; --muted: #6b6a66; --line: #e2e0da;
+    --accent: #1f6feb; --accent-text: #ffffff; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --card: #21211f; --text: #ecebe7; --muted: #a09e98; --line: #34332f;
+      --accent: #4c8dff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 16px; flex-wrap: wrap; }
+  h1 { font-size: 1.35rem; margin: 0; }
+  h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  label { display: block; font-weight: 600; font-size: .9rem; margin: 12px 0 4px; }
+  h2 + label { margin-top: 0; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 9px 10px;
+  }
+  textarea { resize: vertical; min-height: 4.5em; }
+  button {
+    font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    border-radius: 8px; padding: 9px 14px; cursor: pointer; min-height: 42px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row > input, .row > select { flex: 1; min-width: 0; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+  .mono { font-family: var(--mono); font-size: .85rem; word-break: break-all; }
+  #pager-state { font-size: .85rem; color: var(--muted); }
+  #pager-state.on { color: var(--ok); }
+  #strength.good { color: var(--ok); } #strength.warn { color: var(--warn); } #strength.bad { color: var(--bad); }
+  .check { display: flex; align-items: center; gap: 6px; font-weight: 400; margin: 8px 0 0; }
+  .question { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 10px; }
+  .question .row { margin-bottom: 6px; }
+  .q-builtin { display: block; color: var(--warn); font-size: .8rem; margin: -2px 0 6px; }
+  #errors { color: var(--bad); font-size: .85rem; padding-left: 18px; margin: 10px 0 0; }
+  #errors:empty { display: none; }
+  details summary { cursor: pointer; color: var(--muted); font-size: .9rem; margin-top: 12px; }
+  pre { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: .8rem; }
+  progress { width: 100%; height: 10px; margin-top: 12px; }
+  #log { list-style: none; padding: 0; margin: 0; font-size: .85rem; max-height: 260px; overflow-y: auto; }
+  #log li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  #log li.ok { color: var(--ok); } #log li.warn { color: var(--warn); } #log li.err { color: var(--bad); }
+  .banner { background: color-mix(in srgb, var(--warn) 15%, var(--card)); border-color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>MSPager Setup</h1>
+    <div class="row">
+      <span id="pager-state">not connected</span>
+    </div>
+  </header>
+
+  <section id="no-ble" class="banner" hidden>
+    <strong>This browser has no Web Bluetooth.</strong>
+    Use Chrome or Edge (desktop or Android). On iPhone/iPad, use the Bluefy browser.
+    The page must be opened over https (or localhost).
+  </section>
+
+  <section>
+    <h2>1 · Pager</h2>
+    <button id="connect" class="primary" data-needs-ble>Connect pager</button>
+    <p class="hint">Pagers show up as <span class="mono">MeshCore-…</span>. The first time, enter the PIN from the
+      pager's screen (hold the button for 10 s to show it).</p>
+  </section>
+
+  <section>
+    <h2>2 · Group</h2>
+    <p class="hint" style="margin-top:0">Same for every pager of the group.</p>
+    <label for="channel">Channel name</label>
+    <input id="channel" type="text" maxlength="31" autocomplete="off">
+
+    <label for="key-mode">Channel key</label>
+    <select id="key-mode">
+      <option value="password">From a group password</option>
+      <option value="hex">Enter key directly (hex)</option>
+    </select>
+
+    <div id="pw-block">
+      <label for="password">Group password</label>
+      <div class="row">
+        <input id="password" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button id="generate" type="button">Generate</button>
+      </div>
+      <label class="check"><input id="show-pw" type="checkbox"> Show password</label>
+      <p id="strength" class="hint"></p>
+      <p class="hint">Everyone who enters the same password and channel name gets the same key.
+        Spaces, dashes and upper/lower case don't matter. Write it down or read it out;
+        the page never stores it.</p>
+      <p class="hint">Key: <span id="derived" class="mono">—</span></p>
+    </div>
+
+    <div id="hex-block" hidden>
+      <label for="hexkey">Key (32 hex characters)</label>
+      <div class="row">
+        <input id="hexkey" type="text" class="mono" maxlength="32" autocomplete="off" spellcheck="false">
+        <button id="hexgen" type="button">Random</button>
+      </div>
+    </div>
+
+    <label for="region">Radio region</label>
+    <select id="region"></select>
+    <p class="hint">EU/UK and US/CA use the MeshCore preset. Other regions need frequency settings in the YAML (not in this form yet).</p>
+
+    <label>Questions <span id="q-count" class="hint"></span></label>
+    <p class="hint" style="margin-top:0">Added after the built-in ones (Angekommen?, Brauche Hilfe, Standort?, Mein Standort).
+      One reply per line, 1–6 replies, each at most 40 bytes.</p>
+    <div id="questions"></div>
+    <div class="buttons"><button id="add-question" type="button">+ Question</button></div>
+  </section>
+
+  <section>
+    <h2>3 · This pager</h2>
+    <label for="nickname">Nickname</label>
+    <input id="nickname" type="text" maxlength="31" autocomplete="off" placeholder="e.g. Anna">
+    <p class="hint">Shown to the others as the sender. Up to 10 characters fit the display.</p>
+    <ul id="errors"></ul>
+    <div class="buttons">
+      <button id="upload" class="primary" data-needs-pager>Upload setup</button>
+      <button id="status" data-needs-pager>Show active setup</button>
+      <button id="clear" data-needs-pager>Reset setup</button>
+      <button id="download" type="button">Download YAML</button>
+    </div>
+    <details>
+      <summary>YAML preview</summary>
+      <pre id="yaml"></pre>
+    </details>
+  </section>
+
+  <section>
+    <h2>4 · Firmware update</h2>
+    <label for="fw-file">Firmware file</label>
+    <input id="fw-file" type="file" accept=".bin,.zip">
+    <p class="hint">Heltec V3/V4: <span class="mono">…_pager-…​.bin</span> (not <span class="mono">-merged</span>).
+      T114: <span class="mono">…_pager-…​.zip</span>. The page checks that the file matches the pager.
+      Keep the phone close; an update takes a few minutes. First install: USB.</p>
+    <div class="buttons"><button id="update" class="primary" data-needs-pager>Update firmware</button></div>
+    <div id="dfu-step" hidden>
+      <p class="hint">The pager is now in update mode. Select the new device (e.g. <span class="mono">AdaDFU</span>):</p>
+      <div class="buttons"><button id="dfu-go" class="primary">Select bootloader</button></div>
+    </div>
+    <progress id="progress" max="1" value="0" hidden></progress>
+    <p id="progress-text" class="hint"></p>
+  </section>
+
+  <section>
+    <h2>Log</h2>
+    <ul id="log"></ul>
+  </section>
+</main>
+
+<template id="question-tpl">
+  <div class="question">
+    <div class="row">
+      <input class="q-text" type="text" placeholder="Question, e.g. Wann kommst du?" autocomplete="off">
+      <button class="q-remove" type="button" aria-label="Remove question">✕</button>
+    </div>
+    <textarea class="q-replies" placeholder="5 min&#10;30 min&#10;Später"></textarea>
+  </div>
+</template>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

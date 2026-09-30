@@ -178,6 +178,9 @@ protected:
   void loadPagerRadioPrefs();
   void handlePagerConfigCmd(size_t len);
   void writePagerConfigResult(uint8_t status, int line, const char* msg);
+  unsigned long _pager_restart_at = 0;   // after a firmware update (FRD-024)
+  void handlePagerOtaCmd(size_t len);
+  void writePagerOtaResult(uint8_t status, const char* msg);
 #endif
 
 public:

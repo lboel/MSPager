@@ -4,6 +4,20 @@ Newest entries at the top. Record decisions, their reasons, and anything surpris
 
 ---
 
+## 2026-09-30 — Setup web app, firmware update over BLE, group password (draft)
+
+**Request:** a web app for setup, which also flashes over Bluetooth (so it works from a phone), with the channel key derived from a 4-word group password.
+
+**Done**
+- **Firmware update over BLE (FRD-024):** companion command `0x71` with INFO/BEGIN/DATA/END/ABORT/DFU. ESP32 (V3/V4): the app image goes into the spare OTA slot (Arduino `Update`), checked by size, MD5 and the board marker `MSPAGER-BOARD:<env>` (new `PAGER_BOARD` per env). DATA is acknowledged only every 4th frame: the ESP32 BLE layer answers at most every 60 ms and queues 4 frames, so per-frame answers would take ~8 min for 1.3 MB. nRF52 (T114): DFU restarts into the Adafruit bootloader's BLE DFU mode (`enterOTADfu()`), the client then speaks Nordic legacy DFU with the `.zip`.
+- **`bin/pager_ota.py`:** reference client and test tool (info, update for both methods).
+- **`webapp/` (FRD-025):** static page, Web Bluetooth. Group (channel, password or hex key, region, questions), nickname, upload/status/reset, YAML preview/download, firmware update with progress. Password → key: PBKDF2-HMAC-SHA256, 600,000 iterations, salt `MSPager/v1/channel-key/<channel>`, password normalised (case, separators). Generator: 4 words from the EFF large wordlist (≈ 52 bits). The form is kept in `localStorage`, never the password or key.
+- Checked without devices: MD5 against Node crypto (incl. the V3 image), the zip reader on the real T114 package, board marker in both image types, the KDF against Node's PBKDF2 (test vector in the protocol doc), the generated YAML through the pager's own parser (escapes, emoji). The page loads in headless Chrome.
+
+**Open:** the BLE tests on the devices. From this Mac, pairing failed: `MeshCore-B9DAD30E` "Encryption is insufficient" (no PIN dialog), `MeshCore-top-on 1000` "Peer removed pairing information" (stale macOS pairing from before the merged flash). Hosting over https (GitHub Pages of the fork?). Published firmware files still contain the build key as fallback.
+
+---
+
 ## 2026-09-30 — Heltec V3 and T114 builds
 
 **Request:** support the Heltec T114 (different display size), and build firmware for T114 and V3 too. The buzzer can be left out for now.
